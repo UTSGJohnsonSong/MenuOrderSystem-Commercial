@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+:root {
+  --background: #FFF8EF;
+  --primary: #FF9F43;
+  --primary-soft: #FFE2BD;
+  --card: #FFFFFF;
+  --text: #3D2C22;
+  --muted: #8A6F5A;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar {
+  width: 0;
+}
