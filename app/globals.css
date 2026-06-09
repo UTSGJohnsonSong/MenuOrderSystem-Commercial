@@ -1,25 +1,93 @@
 @import "tailwindcss";
 
 :root {
-  --background: #FFF8EF;
-  --primary: #FF9F43;
-  --primary-soft: #FFE2BD;
-  --card: #FFFFFF;
-  --text: #3D2C22;
-  --muted: #8A6F5A;
+  --nav-h: 56px;
+  --primary: #F5B460;
+  --bg: #FFF8EF;
+  --text: #3A2A1A;
+  --muted: #9A7B5F;
 }
 
-* {
+/* ── Reset ── */
+*, *::before, *::after {
   box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ── Root sizing ── */
+html {
+  overscroll-behavior: none;
 }
 
 body {
-  background-color: var(--background);
+  overscroll-behavior: none;
+  background-color: #EDE5D8;
   color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB",
+    "SF Pro Text", "Noto Sans SC", "Segoe UI", sans-serif;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* Prevent iOS font size bump in landscape */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
+/* ── Buttons & interactive ── */
+button {
+  border: none;
+  cursor: pointer;
+  touch-action: manipulation; /* Removes 300ms tap delay */
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ── Inputs ── */
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+}
+
+input,
+textarea,
+select {
+  /* Prevent iOS auto-zoom on focus (font-size must be >= 16px) */
+  font-size: 16px;
+}
+
+/* ── Images ── */
+img {
+  -webkit-user-drag: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ── Scrollable containers ── */
+/* Apply to any div that scrolls inside the app */
+[data-scroll],
+aside,
+.scroll-y {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+
+/* ── Hide scrollbars ── */
 ::-webkit-scrollbar {
   width: 0;
+  height: 0;
+}
+
+/* ── Links ── */
+a {
+  -webkit-tap-highlight-color: transparent;
+  text-decoration: none;
+  color: inherit;
+}
+
+/* ── Selection ── */
+::selection {
+  background: rgba(245, 180, 96, 0.3);
 }

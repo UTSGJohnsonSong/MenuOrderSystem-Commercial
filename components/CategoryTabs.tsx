@@ -10,17 +10,22 @@ interface Props {
 
 export default function CategoryTabs({ categories, activeId, onChange }: Props) {
   return (
-    <div className="flex gap-2 overflow-x-auto px-4 py-2 no-scrollbar" style={{ scrollbarWidth: "none" }}>
+    <div
+      className="flex gap-2 overflow-x-auto px-4 pb-3"
+      style={{ scrollbarWidth: "none" }}
+    >
       {categories.map((cat) => {
-        const isActive = cat.id === activeId;
+        const active = cat.id === activeId;
         return (
           <button
             key={cat.id}
             onClick={() => onChange(cat.id)}
-            className="flex-shrink-0 px-4 py-2 rounded-full text-sm transition-colors"
+            className="flex-shrink-0 px-4 py-1.5 rounded-full text-sm transition-all"
             style={{
-              backgroundColor: isActive ? "#FF9F43" : "#FFE2BD",
-              color: isActive ? "#ffffff" : "#8A6F5A",
+              backgroundColor: active ? "#F59E42" : "#FFF3E0",
+              color: active ? "#ffffff" : "#9A7B5F",
+              fontWeight: active ? 600 : 400,
+              fontSize: "0.8125rem",
             }}
           >
             {cat.name}

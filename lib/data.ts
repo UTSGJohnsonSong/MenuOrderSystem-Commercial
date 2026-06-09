@@ -2,13 +2,13 @@ import { Category, MenuItem } from "./types";
 
 export const DEFAULT_CATEGORIES: Category[] = [
   { id: "zaochan", name: "早餐", sort_order: 1 },
-  { id: "zhushi", name: "主食", sort_order: 2 },
-  { id: "mianshi", name: "面食", sort_order: 3 },
+  { id: "zhushi", name: "米饭", sort_order: 2 },
+  { id: "mianshi", name: "面面", sort_order: 3 },
   { id: "rourou", name: "肉肉", sort_order: 4 },
   { id: "caicai", name: "菜菜", sort_order: 5 },
-  { id: "shuiguo", name: "水果", sort_order: 6 },
-  { id: "tianpin", name: "甜品", sort_order: 7 },
-  { id: "yao", name: "药", sort_order: 8 },
+  { id: "shuiguo", name: "果果", sort_order: 6 },
+  { id: "tianpin", name: "甜甜", sort_order: 7 },
+  { id: "yao", name: "小药", sort_order: 8 },
 ];
 
 export const DEFAULT_ITEMS: MenuItem[] = [

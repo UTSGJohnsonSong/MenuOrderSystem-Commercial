@@ -1,107 +1,187 @@
 "use client";
 
+import { useState } from "react";
 import { MenuItem, Category } from "@/lib/types";
 
 interface Props {
   item: MenuItem | null;
   category: Category | undefined;
-  isInCart: boolean;
-  onAdd: () => void;
+  quantity: number;
+  onIncrease: () => void;
+  onDecrease: () => void;
   onClose: () => void;
+  onEdit?: (item: MenuItem) => void;
+  onDelete?: (item: MenuItem) => void;
 }
 
-export default function ItemDetailModal({ item, category, isInCart, onAdd, onClose }: Props) {
+export default function ItemDetailModal({
+  item, category, quantity, onIncrease, onDecrease, onClose, onEdit, onDelete,
+}: Props) {
+  const [imgError, setImgError] = useState(false);
+
   if (!item) return null;
 
+  const showPlaceholder = !item.image_url || imgError;
+
+  const handleDelete = () => {
+    if (window.confirm(`删除「${item.name}」？`)) {
+      onDelete?.(item);
+      onClose();
+    }
+  };
+
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center"
-      style={{ backgroundColor: "rgba(61,44,34,0.4)" }}
-      onClick={onClose}
-    >
-      <div
-        className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto bg-white rounded-t-3xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 z-10 text-sm px-2 py-1 rounded-full"
-          style={{ color: "#8A6F5A" }}
-        >
-          ×
-        </button>
-
-        {item.image_url ? (
-          <img
-            src={item.image_url}
-            alt={item.name}
-            className="w-full aspect-video object-cover rounded-t-3xl"
-          />
-        ) : (
-          <div
-            className="w-full aspect-video rounded-t-3xl"
-            style={{ backgroundColor: "#FFE2BD" }}
-          />
-        )}
-
-        <div className="p-5">
-          <div className="flex items-center gap-2 mb-3">
-            <h2 className="text-xl font-semibold" style={{ color: "#3D2C22" }}>
-              {item.name}
-            </h2>
-            {category && (
-              <span
-                className="text-xs px-2 py-1 rounded-full"
-                style={{ backgroundColor: "#FFE2BD", color: "#FF9F43" }}
-              >
-                {category.name}
+    <div style={{
+      position: "fixed", inset: 0, zIndex: 50,
+      display: "flex", alignItems: "flex-end", justifyContent: "center",
+      backgroundColor: "rgba(45,31,20,0.45)",
+    }} onClick={onClose}>
+      <div onClick={e => e.stopPropagation()} style={{
+        width: "100%", maxWidth: "480px",
+        maxHeight: "90dvh", overflowY: "auto",
+        background: "linear-gradient(180deg, #FFFDF8 0%, #FFF7EA 100%)",
+        borderRadius: "28px 28px 0 0",
+        paddingBottom: "env(safe-area-inset-bottom)",
+      }}>
+        {/* Image */}
+        <div style={{ position: "relative" }}>
+          {showPlaceholder ? (
+            <div style={{
+              width: "100%", aspectRatio: "16/9",
+              background: "linear-gradient(135deg, #FFF3E4 0%, #FFE8CC 100%)",
+              borderRadius: "28px 28px 0 0",
+              display: "flex", flexDirection: "column",
+              alignItems: "center", justifyContent: "center", gap: "8px",
+            }}>
+              <span style={{ fontSize: "3rem" }}>
+                {category?.id === "zaochan" ? "🍳" :
+                 category?.id === "zhushi"  ? "🍚" :
+                 category?.id === "mianshi" ? "🍜" :
+                 category?.id === "rourou"  ? "🥩" :
+                 category?.id === "caicai"  ? "🥦" :
+                 category?.id === "shuiguo" ? "🍓" :
+                 category?.id === "tianpin" ? "🍮" :
+                 category?.id === "yao"     ? "💊" : "🍽️"}
               </span>
+              <span style={{ color: "#C99558", fontSize: "0.75rem" }}>{item.name}</span>
+            </div>
+          ) : (
+            <img src={item.image_url} alt={item.name} loading="lazy" onError={() => setImgError(true)}
+              style={{
+                width: "100%", aspectRatio: "16/9", objectFit: "cover",
+                borderRadius: "28px 28px 0 0", display: "block",
+              }} />
+          )}
+          <button onClick={onClose} style={{
+            position: "absolute", top: "12px", right: "12px",
+            width: "32px", height: "32px", borderRadius: "50%",
+            backgroundColor: "rgba(255,255,255,0.88)",
+            color: "#9A7B5F", fontSize: "1.1rem",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            border: "none", cursor: "pointer",
+          }}>×</button>
+        </div>
+
+        {/* Content */}
+        <div style={{ padding: "20px 20px 28px" }}>
+          {/* Title row + edit/delete */}
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "16px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", flex: 1, minWidth: 0 }}>
+              <h2 style={{
+                color: "#3C2415", fontSize: "1.125rem", fontWeight: 800,
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+              }}>{item.name}</h2>
+              {category && (
+                <span style={{
+                  padding: "2px 10px", borderRadius: "999px",
+                  backgroundColor: "#FFE8CC", color: "#C47A2C",
+                  fontSize: "0.6875rem", fontWeight: 600, flexShrink: 0,
+                }}>{category.name}</span>
+              )}
+            </div>
+            {(onEdit || onDelete) && (
+              <div style={{ display: "flex", gap: "8px", flexShrink: 0, marginLeft: "12px" }}>
+                {onEdit && (
+                  <button onClick={() => { onEdit(item); onClose(); }} style={{
+                    padding: "5px 12px", borderRadius: "999px",
+                    backgroundColor: "#FFF3E4", color: "#C47A2C",
+                    fontSize: "0.75rem", fontWeight: 600,
+                    border: "1px solid rgba(240,210,170,0.7)", cursor: "pointer",
+                  }}>编辑</button>
+                )}
+                {onDelete && (
+                  <button onClick={handleDelete} style={{
+                    padding: "5px 12px", borderRadius: "999px",
+                    backgroundColor: "#FFF0F0", color: "#D46060",
+                    fontSize: "0.75rem", fontWeight: 600,
+                    border: "1px solid rgba(220,140,140,0.4)", cursor: "pointer",
+                  }}>删除</button>
+                )}
+              </div>
             )}
           </div>
 
           {item.ingredients && (
-            <>
-              <p className="text-sm font-medium mt-4 mb-1" style={{ color: "#8A6F5A" }}>
-                食材
-              </p>
-              <p className="text-sm leading-relaxed" style={{ color: "#3D2C22" }}>
-                {item.ingredients}
-              </p>
-            </>
+            <div style={{ marginBottom: "14px" }}>
+              <p style={{ color: "#B08A68", fontSize: "0.6875rem", fontWeight: 700, marginBottom: "5px", letterSpacing: "0.04em" }}>食材</p>
+              <p style={{ color: "#3C2415", fontSize: "0.875rem", lineHeight: 1.75 }}>{item.ingredients}</p>
+            </div>
           )}
-
           {item.instructions && (
-            <>
-              <p className="text-sm font-medium mt-4 mb-1" style={{ color: "#8A6F5A" }}>
-                做法
-              </p>
-              <p className="text-sm leading-relaxed" style={{ color: "#3D2C22" }}>
-                {item.instructions}
-              </p>
-            </>
+            <div style={{ marginBottom: "14px" }}>
+              <p style={{ color: "#B08A68", fontSize: "0.6875rem", fontWeight: 700, marginBottom: "5px", letterSpacing: "0.04em" }}>做法</p>
+              <p style={{ color: "#3C2415", fontSize: "0.875rem", lineHeight: 1.75 }}>{item.instructions}</p>
+            </div>
           )}
-
           {item.notes && (
-            <>
-              <p className="text-sm font-medium mt-4 mb-1" style={{ color: "#8A6F5A" }}>
-                备注
-              </p>
-              <p className="text-sm leading-relaxed" style={{ color: "#3D2C22" }}>
-                {item.notes}
-              </p>
-            </>
+            <div style={{ marginBottom: "14px" }}>
+              <p style={{ color: "#B08A68", fontSize: "0.6875rem", fontWeight: 700, marginBottom: "5px", letterSpacing: "0.04em" }}>备注</p>
+              <p style={{ color: "#3C2415", fontSize: "0.875rem", lineHeight: 1.75 }}>{item.notes}</p>
+            </div>
           )}
 
-          <button
-            onClick={onAdd}
-            className="w-full py-3 rounded-2xl text-sm font-medium mt-6 transition-colors"
-            style={{
-              backgroundColor: isInCart ? "#FFE2BD" : "#FF9F43",
-              color: isInCart ? "#FF9F43" : "#ffffff",
-            }}
-          >
-            {isInCart ? "已在今日菜单" : "加入今日菜单"}
-          </button>
+          {/* Quantity control */}
+          <div style={{ marginTop: "20px" }}>
+            {quantity === 0 ? (
+              <button onClick={onIncrease} style={{
+                width: "100%", padding: "14px",
+                borderRadius: "18px",
+                background: "linear-gradient(180deg, #F5B460 0%, #E8991E 100%)",
+                color: "#FFFFFF", fontSize: "0.9375rem", fontWeight: 700,
+                border: "none", cursor: "pointer",
+                boxShadow: "0 5px 16px rgba(232,153,30,0.38)",
+              }}>加入今日菜单</button>
+            ) : (
+              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                <p style={{ color: "#B08A68", fontSize: "0.875rem", flex: 1 }}>
+                  已加入 <span style={{ color: "#E8991E", fontWeight: 700 }}>{quantity}</span> 份
+                </p>
+                <div style={{
+                  display: "flex", alignItems: "center",
+                  background: "linear-gradient(180deg, #F5B460 0%, #E8991E 100%)",
+                  borderRadius: "999px", padding: "4px",
+                  boxShadow: "0 4px 12px rgba(232,153,30,0.3)",
+                }}>
+                  <button onClick={onDecrease} style={{
+                    width: "34px", height: "34px", borderRadius: "50%",
+                    color: "#FFFFFF", fontSize: "22px", fontWeight: 300,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    border: "none", background: "transparent", cursor: "pointer",
+                  }}>−</button>
+                  <span style={{
+                    color: "#FFFFFF", fontSize: "1rem", fontWeight: 700,
+                    minWidth: "28px", textAlign: "center",
+                  }}>{quantity}</span>
+                  <button onClick={onIncrease} style={{
+                    width: "34px", height: "34px", borderRadius: "50%",
+                    color: "#FFFFFF", fontSize: "22px", fontWeight: 300,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    border: "none", background: "transparent", cursor: "pointer",
+                  }}>+</button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

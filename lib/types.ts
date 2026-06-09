@@ -21,4 +21,20 @@ export interface MenuItem {
 export interface CartItem {
   item: MenuItem;
   category: Category;
+  quantity: number;
+}
+
+export interface MealLogEntry {
+  item_id: string;
+  name: string;
+  category_name: string;
+  image_url: string;
+  quantity: number;
+}
+
+export interface MealLog {
+  id: string;
+  date: string; // YYYY-MM-DD
+  items: MealLogEntry[];
+  created_at: string;
 }
