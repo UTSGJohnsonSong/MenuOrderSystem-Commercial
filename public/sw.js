@@ -1,4 +1,4 @@
-const CACHE = "zeze-kitchen-v1";
+const CACHE = "zeze-kitchen-v2";
 
 const PRECACHE = [
   "/",
