@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Category, MenuItem, CartItem, MealLog } from "./types";
 
 /* ─── useStore ─── */
@@ -9,8 +9,15 @@ export function useStore() {
   const [items, setItems] = useState<MenuItem[]>([]);
 
   useEffect(() => {
-    fetch("/api/categories").then(r => r.json()).then(setCategories);
-    fetch("/api/items").then(r => r.json()).then(setItems);
+    const fetchAll = () => {
+      fetch("/api/categories").then(r => r.json()).then(setCategories);
+      fetch("/api/items").then(r => r.json()).then(setItems);
+    };
+    fetchAll();
+
+    const onVisible = () => { if (document.visibilityState === "visible") fetchAll(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
   }, []);
 
   const addItem = async (item: MenuItem) => {
@@ -36,21 +43,40 @@ export function useStore() {
 /* ─── useCart ─── */
 export function useCart(items: MenuItem[], categories: Category[]) {
   const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const pendingRef = useRef(0);
 
-  useEffect(() => {
-    fetch("/api/cart").then(r => r.json()).then((rows: { item_id: string; quantity: number }[]) => {
-      const map: Record<string, number> = {};
-      rows.forEach(r => { map[r.item_id] = r.quantity; });
-      setQuantities(map);
-    });
-  }, []);
-
-  const applyChange = async (body: { item_id: string; delta?: number; quantity?: number }) => {
-    const res = await fetch("/api/cart", { method: "POST", body: JSON.stringify(body) });
-    const rows: { item_id: string; quantity: number }[] = await res.json();
+  const applyRows = (rows: { item_id: string; quantity: number }[]) => {
     const map: Record<string, number> = {};
     rows.forEach(r => { map[r.item_id] = r.quantity; });
     setQuantities(map);
+  };
+
+  useEffect(() => {
+    const fetchCart = () => {
+      if (pendingRef.current > 0) return;
+      fetch("/api/cart").then(r => r.json()).then(applyRows);
+    };
+    fetchCart();
+
+    // 轮询 + 切回页面时刷新，让多人同时点菜的购物车保持同步
+    const interval = setInterval(fetchCart, 3000);
+    const onVisible = () => { if (document.visibilityState === "visible") fetchCart(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, []);
+
+  const applyChange = async (body: { item_id: string; delta?: number; quantity?: number }) => {
+    pendingRef.current++;
+    try {
+      const res = await fetch("/api/cart", { method: "POST", body: JSON.stringify(body) });
+      const rows: { item_id: string; quantity: number }[] = await res.json();
+      applyRows(rows);
+    } finally {
+      pendingRef.current--;
+    }
   };
 
   const addToCart = (item: MenuItem, _category: Category) => {
@@ -101,7 +127,19 @@ export function useMealLog() {
   const [logs, setLogs] = useState<MealLog[]>([]);
 
   useEffect(() => {
-    fetch("/api/logs").then(r => r.json()).then(setLogs);
+    const fetchLogs = () => {
+      fetch("/api/logs").then(r => r.json()).then(setLogs);
+    };
+    fetchLogs();
+
+    // 轮询 + 切回页面时刷新，让"今日菜单已确定"的状态同步给所有人
+    const interval = setInterval(fetchLogs, 5000);
+    const onVisible = () => { if (document.visibilityState === "visible") fetchLogs(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, []);
 
   const saveLog = async (log: MealLog) => {

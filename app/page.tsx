@@ -156,6 +156,66 @@ function FoodCard({ item, categoryId, quantity, onIncrease, onDecrease, onClick 
   );
 }
 
+/* ─── 今日状态 Banner ─── */
+function TodayStatusBanner({ todayLog, totalItems, onClick }: {
+  todayLog?: MealLog; totalItems: number; onClick: () => void;
+}) {
+  if (totalItems === 0 && !todayLog) return null;
+
+  // 有人正在加菜（购物车非空）优先展示，让大家知道目前在一起选菜
+  if (totalItems > 0) {
+    return (
+      <div onClick={onClick} style={{
+        margin: "12px 16px 0", padding: "12px 14px",
+        backgroundColor: "#FFF1DD", borderRadius: "16px",
+        display: "flex", alignItems: "center", gap: "10px",
+        cursor: "pointer",
+        border: "1px solid rgba(242,162,74,0.25)",
+      }}>
+        <span style={{ fontSize: "1.25rem" }}>🛒</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ color: "#3A2A1A", fontSize: "0.8125rem", fontWeight: 700 }}>
+            正在一起点菜 · 已选 {totalItems} 样
+          </p>
+          <p style={{ color: "#9A7B5F", fontSize: "0.6875rem", marginTop: "2px" }}>
+            点这里查看今日菜单
+          </p>
+        </div>
+        <span style={{ color: "#C8A878", fontSize: "0.875rem" }}>›</span>
+      </div>
+    );
+  }
+
+  // 购物车为空但今天已经确定过菜单
+  if (todayLog) {
+    const total = todayLog.items.reduce((s, i) => s + i.quantity, 0);
+    const names = todayLog.items.map(i => i.name).join("、");
+    return (
+      <div style={{
+        margin: "12px 16px 0", padding: "12px 14px",
+        backgroundColor: "#EAF5EA", borderRadius: "16px",
+        display: "flex", alignItems: "center", gap: "10px",
+        border: "1px solid rgba(120,180,120,0.25)",
+      }}>
+        <span style={{ fontSize: "1.25rem" }}>✅</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ color: "#3A2A1A", fontSize: "0.8125rem", fontWeight: 700 }}>
+            今日菜单已确定 · 共 {total} 道
+          </p>
+          <p style={{
+            color: "#7FA37F", fontSize: "0.6875rem", marginTop: "2px",
+            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          }}>
+            {names}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+}
+
 /* ─── 今日菜单 Modal ─── */
 function SendModal({ cartItems, categories, onClose, onDone, onSave, onIncrease, onDecrease }: {
   cartItems: ReturnType<typeof useCart>["cartItems"];
@@ -335,7 +395,10 @@ function SendModal({ cartItems, categories, onClose, onDone, onSave, onIncrease,
 export default function OrderPage() {
   const { categories, items, addItem, updateItem, deleteItem } = useStore();
   const { cartItems, addToCart, decreaseFromCart, clearCart, getQuantity, totalItems } = useCart(items, categories);
-  const { saveLog } = useMealLog();
+  const { logs, saveLog } = useMealLog();
+
+  const todayStr = new Date().toISOString().split("T")[0];
+  const todayLog = logs.find(l => l.date === todayStr);
 
   const [activeCatId, setActiveCatId] = useState<string>("");
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
@@ -388,6 +451,12 @@ export default function OrderPage() {
           }}
         />
       </div>
+
+      <TodayStatusBanner
+        todayLog={todayLog}
+        totalItems={totalItems}
+        onClick={() => setShowSendModal(true)}
+      />
 
       {/* ── Body ── */}
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
