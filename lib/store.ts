@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Category, MenuItem, CartItem, MealLog } from "./types";
 
 /* ─── useStore ─── */
@@ -40,80 +40,65 @@ export function useStore() {
   return { categories, items, addItem, updateItem, deleteItem };
 }
 
-function shallowEqualMap(a: Record<string, number>, b: Record<string, number>) {
-  const aKeys = Object.keys(a);
-  const bKeys = Object.keys(b);
-  if (aKeys.length !== bKeys.length) return false;
-  return aKeys.every(k => a[k] === b[k]);
+const CART_KEY = "fm-cart";
+
+function loadCart(): Record<string, number> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(CART_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
 }
 
-/* ─── useCart ─── */
+function saveCart(quantities: Record<string, number>) {
+  try {
+    localStorage.setItem(CART_KEY, JSON.stringify(quantities));
+  } catch {
+    // ignore (e.g. 隐私模式下 localStorage 不可用)
+  }
+}
+
+/* ─── useCart ───
+ * 购物车只保存在本地（localStorage），不跨设备同步——
+ * 点菜到保存食记之间这段"草稿"状态延迟太敏感，不值得为此引入网络同步。
+ * 真正需要同步给所有人看的是菜品库（useStore）和食记（useMealLog）。
+ */
 export function useCart(items: MenuItem[], categories: Category[]) {
   const [quantities, setQuantities] = useState<Record<string, number>>({});
-  // 记录"本地最近一次改动"的时间。任何在这之前发出的 GET 请求，
-  // 哪怕现在才返回，也是过时数据，必须丢弃——否则会把刚刚的乐观更新
-  // 瞬间覆盖回旧值，造成"加一→跳回0→再变回1"的闪烁。
-  const lastChangeRef = useRef(0);
-
-  const applyRows = (rows: { item_id: string; quantity: number }[], requestTime: number) => {
-    if (requestTime < lastChangeRef.current) return;
-    const map: Record<string, number> = {};
-    rows.forEach(r => { map[r.item_id] = r.quantity; });
-    // 数据没变化时不更新 state，避免每次轮询都触发整页重渲染导致卡顿
-    setQuantities(prev => shallowEqualMap(prev, map) ? prev : map);
-  };
 
   useEffect(() => {
-    const fetchCart = () => {
-      const requestTime = Date.now();
-      fetch("/api/cart").then(r => r.json()).then(rows => applyRows(rows, requestTime));
-    };
-    fetchCart();
-
-    // 轮询 + 切回页面时刷新，让多人同时点菜的购物车保持同步
-    const interval = setInterval(fetchCart, 2000);
-    const onVisible = () => { if (document.visibilityState === "visible") fetchCart(); };
-    document.addEventListener("visibilitychange", onVisible);
-    return () => {
-      clearInterval(interval);
-      document.removeEventListener("visibilitychange", onVisible);
-    };
+    setQuantities(loadCart());
   }, []);
 
-  // 写请求只发出去，不用它的返回值覆盖本地状态——本地的乐观更新已经是最新状态，
-  // 其他设备的改动交给上面的轮询同步即可。
-  const applyChange = (body: { item_id: string; delta?: number; quantity?: number }) => {
-    lastChangeRef.current = Date.now();
-    fetch("/api/cart", { method: "POST", body: JSON.stringify(body) }).catch(() => {});
+  const update = (updater: (prev: Record<string, number>) => Record<string, number>) => {
+    setQuantities(prev => {
+      const next = updater(prev);
+      saveCart(next);
+      return next;
+    });
   };
 
   const addToCart = (item: MenuItem, _category: Category) => {
-    lastChangeRef.current = Date.now();
-    setQuantities(prev => ({ ...prev, [item.id]: (prev[item.id] ?? 0) + 1 }));
-    applyChange({ item_id: item.id, delta: 1 });
+    update(prev => ({ ...prev, [item.id]: (prev[item.id] ?? 0) + 1 }));
   };
 
   const decreaseFromCart = (itemId: string) => {
-    lastChangeRef.current = Date.now();
-    setQuantities(prev => {
+    update(prev => {
       const next = { ...prev };
       const q = (next[itemId] ?? 0) - 1;
       if (q <= 0) delete next[itemId]; else next[itemId] = q;
       return next;
     });
-    applyChange({ item_id: itemId, delta: -1 });
   };
 
   const removeFromCart = (itemId: string) => {
-    lastChangeRef.current = Date.now();
-    setQuantities(prev => { const next = { ...prev }; delete next[itemId]; return next; });
-    applyChange({ item_id: itemId, quantity: 0 });
+    update(prev => { const next = { ...prev }; delete next[itemId]; return next; });
   };
 
-  const clearCart = async () => {
-    lastChangeRef.current = Date.now();
-    setQuantities({});
-    await fetch("/api/cart", { method: "DELETE" });
+  const clearCart = () => {
+    update(() => ({}));
   };
 
   const getQuantity = useCallback((itemId: string) => quantities[itemId] ?? 0, [quantities]);

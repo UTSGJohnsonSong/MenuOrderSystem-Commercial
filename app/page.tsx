@@ -376,13 +376,13 @@ export default function OrderPage() {
       background: "linear-gradient(180deg, #FFFDF8 0%, #FFF7EA 100%)",
     }}>
       {/* ── Banner ── */}
-      <div style={{ flexShrink: 0, height: "260px", overflow: "hidden" }}>
+      <div style={{ flexShrink: 0, width: "100%", aspectRatio: "1916 / 821", overflow: "hidden" }}>
         <img
           src="/header-bg.png"
           alt=""
           style={{
             width: "100%", height: "100%",
-            objectFit: "cover", objectPosition: "center top",
+            objectFit: "cover", objectPosition: "center",
             display: "block",
           }}
         />
@@ -441,15 +441,17 @@ export default function OrderPage() {
             bottom: `calc(${navH} + 14px)`,
             right: "20px",
             zIndex: 40,
-            width: "64px", height: "64px",
-            borderRadius: "22px",
-            border: "none", cursor: "pointer", padding: 0,
-            background: "linear-gradient(160deg, #FFC371 0%, #E8991E 100%)",
+            width: "72px", height: "72px",
+            borderRadius: "24px",
+            border: "none", cursor: "pointer", padding: "10px",
+            backgroundColor: "#FFFDF8",
             display: "flex", alignItems: "center", justifyContent: "center",
-            boxShadow: "0 8px 24px rgba(232,153,30,0.45)",
+            boxShadow: "0 8px 24px rgba(232,153,30,0.35)",
           }}
         >
-          <span style={{ fontSize: "2rem", lineHeight: 1 }}>🛒</span>
+          <img src="/cart-icon.png" alt="购物车" style={{
+            width: "100%", height: "100%", objectFit: "contain", display: "block",
+          }} />
           <span style={{
             position: "absolute", top: "-6px", right: "-6px",
             backgroundColor: "#E85D2F", color: "#FFFFFF",
