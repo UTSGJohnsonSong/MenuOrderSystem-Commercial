@@ -333,10 +333,9 @@ function SendModal({ cartItems, categories, onClose, onDone, onSave, onIncrease,
 
 /* ─── Main 点菜 Page ─── */
 export default function OrderPage() {
-  const { cartItems, addToCart, decreaseFromCart, clearCart, getQuantity, totalItems } = useCart();
-  const { saveLog } = useMealLog();
-
   const { categories, items, addItem, updateItem, deleteItem } = useStore();
+  const { cartItems, addToCart, decreaseFromCart, clearCart, getQuantity, totalItems } = useCart(items, categories);
+  const { saveLog } = useMealLog();
 
   const [activeCatId, setActiveCatId] = useState<string>("");
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);

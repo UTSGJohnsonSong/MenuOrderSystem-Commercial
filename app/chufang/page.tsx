@@ -32,7 +32,7 @@ function EntryCard({ label, desc, color, onClick }: {
 
 export default function ChufangPage() {
   const { categories, items, addItem, updateItem, deleteItem } = useStore();
-  const { totalItems } = useCart();
+  const { totalItems } = useCart(items, categories);
   const [view, setView] = useState<"home" | "manage">("home");
   const [formItem, setFormItem] = useState<MenuItem | null>(null);
   const [showForm, setShowForm] = useState(false);
