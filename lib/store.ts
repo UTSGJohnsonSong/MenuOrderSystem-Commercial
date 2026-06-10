@@ -50,9 +50,13 @@ function shallowEqualMap(a: Record<string, number>, b: Record<string, number>) {
 /* ─── useCart ─── */
 export function useCart(items: MenuItem[], categories: Category[]) {
   const [quantities, setQuantities] = useState<Record<string, number>>({});
-  const pendingRef = useRef(0);
+  // 记录"本地最近一次改动"的时间。任何在这之前发出的 GET 请求，
+  // 哪怕现在才返回，也是过时数据，必须丢弃——否则会把刚刚的乐观更新
+  // 瞬间覆盖回旧值，造成"加一→跳回0→再变回1"的闪烁。
+  const lastChangeRef = useRef(0);
 
-  const applyRows = (rows: { item_id: string; quantity: number }[]) => {
+  const applyRows = (rows: { item_id: string; quantity: number }[], requestTime: number) => {
+    if (requestTime < lastChangeRef.current) return;
     const map: Record<string, number> = {};
     rows.forEach(r => { map[r.item_id] = r.quantity; });
     // 数据没变化时不更新 state，避免每次轮询都触发整页重渲染导致卡顿
@@ -61,8 +65,8 @@ export function useCart(items: MenuItem[], categories: Category[]) {
 
   useEffect(() => {
     const fetchCart = () => {
-      if (pendingRef.current > 0) return;
-      fetch("/api/cart").then(r => r.json()).then(applyRows);
+      const requestTime = Date.now();
+      fetch("/api/cart").then(r => r.json()).then(rows => applyRows(rows, requestTime));
     };
     fetchCart();
 
@@ -76,23 +80,21 @@ export function useCart(items: MenuItem[], categories: Category[]) {
     };
   }, []);
 
-  // 写请求只发出去，不用它的返回值覆盖本地状态——
-  // 并发点击时多个请求的返回顺序可能和点击顺序不一致，
-  // 用旧请求的返回值覆盖会导致数字"跳回去"。本地的乐观更新已经是最新状态，
-  // 其他设备的改动交给下面的轮询同步即可。
+  // 写请求只发出去，不用它的返回值覆盖本地状态——本地的乐观更新已经是最新状态，
+  // 其他设备的改动交给上面的轮询同步即可。
   const applyChange = (body: { item_id: string; delta?: number; quantity?: number }) => {
-    pendingRef.current++;
-    fetch("/api/cart", { method: "POST", body: JSON.stringify(body) })
-      .catch(() => {})
-      .finally(() => { pendingRef.current--; });
+    lastChangeRef.current = Date.now();
+    fetch("/api/cart", { method: "POST", body: JSON.stringify(body) }).catch(() => {});
   };
 
   const addToCart = (item: MenuItem, _category: Category) => {
+    lastChangeRef.current = Date.now();
     setQuantities(prev => ({ ...prev, [item.id]: (prev[item.id] ?? 0) + 1 }));
     applyChange({ item_id: item.id, delta: 1 });
   };
 
   const decreaseFromCart = (itemId: string) => {
+    lastChangeRef.current = Date.now();
     setQuantities(prev => {
       const next = { ...prev };
       const q = (next[itemId] ?? 0) - 1;
@@ -103,11 +105,13 @@ export function useCart(items: MenuItem[], categories: Category[]) {
   };
 
   const removeFromCart = (itemId: string) => {
+    lastChangeRef.current = Date.now();
     setQuantities(prev => { const next = { ...prev }; delete next[itemId]; return next; });
     applyChange({ item_id: itemId, quantity: 0 });
   };
 
   const clearCart = async () => {
+    lastChangeRef.current = Date.now();
     setQuantities({});
     await fetch("/api/cart", { method: "DELETE" });
   };
