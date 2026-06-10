@@ -40,6 +40,13 @@ export function useStore() {
   return { categories, items, addItem, updateItem, deleteItem };
 }
 
+function shallowEqualMap(a: Record<string, number>, b: Record<string, number>) {
+  const aKeys = Object.keys(a);
+  const bKeys = Object.keys(b);
+  if (aKeys.length !== bKeys.length) return false;
+  return aKeys.every(k => a[k] === b[k]);
+}
+
 /* ─── useCart ─── */
 export function useCart(items: MenuItem[], categories: Category[]) {
   const [quantities, setQuantities] = useState<Record<string, number>>({});
@@ -48,7 +55,8 @@ export function useCart(items: MenuItem[], categories: Category[]) {
   const applyRows = (rows: { item_id: string; quantity: number }[]) => {
     const map: Record<string, number> = {};
     rows.forEach(r => { map[r.item_id] = r.quantity; });
-    setQuantities(map);
+    // 数据没变化时不更新 state，避免每次轮询都触发整页重渲染导致卡顿
+    setQuantities(prev => shallowEqualMap(prev, map) ? prev : map);
   };
 
   useEffect(() => {
@@ -122,17 +130,26 @@ export function useCart(items: MenuItem[], categories: Category[]) {
   return { cartItems, addToCart, decreaseFromCart, removeFromCart, clearCart, getQuantity, isInCart, totalItems };
 }
 
+// 单次保存食记，不需要订阅整个列表（点菜页用这个，避免不必要的轮询重渲染）
+export async function saveMealLog(log: MealLog): Promise<MealLog> {
+  const res = await fetch("/api/logs", { method: "POST", body: JSON.stringify(log) });
+  return res.json();
+}
+
 /* ─── useMealLog ─── */
 export function useMealLog() {
   const [logs, setLogs] = useState<MealLog[]>([]);
 
   useEffect(() => {
     const fetchLogs = () => {
-      fetch("/api/logs").then(r => r.json()).then(setLogs);
+      fetch("/api/logs").then(r => r.json()).then((next: MealLog[]) => {
+        // 数据没变化时不更新 state，避免每次轮询都触发重渲染
+        setLogs(prev => JSON.stringify(prev) === JSON.stringify(next) ? prev : next);
+      });
     };
     fetchLogs();
 
-    // 轮询 + 切回页面时刷新，让"今日菜单已确定"的状态同步给所有人
+    // 轮询 + 切回页面时刷新，让食记列表保持最新
     const interval = setInterval(fetchLogs, 5000);
     const onVisible = () => { if (document.visibilityState === "visible") fetchLogs(); };
     document.addEventListener("visibilitychange", onVisible);
@@ -143,8 +160,7 @@ export function useMealLog() {
   }, []);
 
   const saveLog = async (log: MealLog) => {
-    const res = await fetch("/api/logs", { method: "POST", body: JSON.stringify(log) });
-    const saved = await res.json();
+    const saved = await saveMealLog(log);
     setLogs(prev => {
       const exists = prev.some(l => l.date === saved.date);
       return exists ? prev.map(l => l.date === saved.date ? saved : l) : [saved, ...prev];

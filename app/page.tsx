@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { useStore, useCart, useMealLog } from "@/lib/store";
+import { useStore, useCart, saveMealLog } from "@/lib/store";
 import { MenuItem, Category, MealLog } from "@/lib/types";
 import ItemDetailModal from "@/components/ItemDetailModal";
 import ItemForm from "@/components/ItemForm";
@@ -335,7 +335,6 @@ function SendModal({ cartItems, categories, onClose, onDone, onSave, onIncrease,
 export default function OrderPage() {
   const { categories, items, addItem, updateItem, deleteItem } = useStore();
   const { cartItems, addToCart, decreaseFromCart, clearCart, getQuantity, totalItems } = useCart(items, categories);
-  const { saveLog } = useMealLog();
 
   const [activeCatId, setActiveCatId] = useState<string>("");
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
@@ -481,7 +480,7 @@ export default function OrderPage() {
           categories={categories}
           onClose={() => setShowSendModal(false)}
           onDone={() => { setShowSendModal(false); clearCart(); }}
-          onSave={log => { saveLog(log); }}
+          onSave={log => { saveMealLog(log); }}
           onIncrease={itemId => {
             const item = items.find(i => i.id === itemId);
             const cat = categories.find(c => c.id === item?.category_id);
