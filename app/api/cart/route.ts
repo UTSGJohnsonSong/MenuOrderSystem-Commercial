@@ -10,21 +10,24 @@ export async function GET() {
 export async function POST(req: Request) {
   const body = (await req.json()) as { item_id: string; delta?: number; quantity?: number };
 
-  let nextQty: number;
   if (body.quantity !== undefined) {
-    nextQty = body.quantity;
+    // 绝对值设置（如清零）
+    if (body.quantity <= 0) {
+      await sql`DELETE FROM cart_items WHERE item_id = ${body.item_id}`;
+    } else {
+      await sql`
+        INSERT INTO cart_items (item_id, quantity) VALUES (${body.item_id}, ${body.quantity})
+        ON CONFLICT (item_id) DO UPDATE SET quantity = ${body.quantity}
+      `;
+    }
   } else {
-    const [existing] = await sql`SELECT quantity FROM cart_items WHERE item_id = ${body.item_id}`;
-    nextQty = (existing?.quantity ?? 0) + (body.delta ?? 0);
-  }
-
-  if (nextQty <= 0) {
-    await sql`DELETE FROM cart_items WHERE item_id = ${body.item_id}`;
-  } else {
+    // 增量更新：用数据库原子运算，避免多人/连续点击时读旧值导致计数被覆盖
+    const delta = body.delta ?? 0;
     await sql`
-      INSERT INTO cart_items (item_id, quantity) VALUES (${body.item_id}, ${nextQty})
-      ON CONFLICT (item_id) DO UPDATE SET quantity = ${nextQty}
+      INSERT INTO cart_items (item_id, quantity) VALUES (${body.item_id}, ${delta})
+      ON CONFLICT (item_id) DO UPDATE SET quantity = cart_items.quantity + ${delta}
     `;
+    await sql`DELETE FROM cart_items WHERE item_id = ${body.item_id} AND quantity <= 0`;
   }
 
   const rows = await sql`SELECT item_id, quantity FROM cart_items`;

@@ -59,7 +59,7 @@ export function useCart(items: MenuItem[], categories: Category[]) {
     fetchCart();
 
     // 轮询 + 切回页面时刷新，让多人同时点菜的购物车保持同步
-    const interval = setInterval(fetchCart, 3000);
+    const interval = setInterval(fetchCart, 2000);
     const onVisible = () => { if (document.visibilityState === "visible") fetchCart(); };
     document.addEventListener("visibilitychange", onVisible);
     return () => {
