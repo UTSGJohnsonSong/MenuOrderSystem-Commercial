@@ -156,66 +156,6 @@ function FoodCard({ item, categoryId, quantity, onIncrease, onDecrease, onClick 
   );
 }
 
-/* ─── 今日状态 Banner ─── */
-function TodayStatusBanner({ todayLog, totalItems, onClick }: {
-  todayLog?: MealLog; totalItems: number; onClick: () => void;
-}) {
-  if (totalItems === 0 && !todayLog) return null;
-
-  // 有人正在加菜（购物车非空）优先展示，让大家知道目前在一起选菜
-  if (totalItems > 0) {
-    return (
-      <div onClick={onClick} style={{
-        margin: "12px 16px 0", padding: "12px 14px",
-        backgroundColor: "#FFF1DD", borderRadius: "16px",
-        display: "flex", alignItems: "center", gap: "10px",
-        cursor: "pointer",
-        border: "1px solid rgba(242,162,74,0.25)",
-      }}>
-        <span style={{ fontSize: "1.25rem" }}>🛒</span>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ color: "#3A2A1A", fontSize: "0.8125rem", fontWeight: 700 }}>
-            正在一起点菜 · 已选 {totalItems} 样
-          </p>
-          <p style={{ color: "#9A7B5F", fontSize: "0.6875rem", marginTop: "2px" }}>
-            点这里查看今日菜单
-          </p>
-        </div>
-        <span style={{ color: "#C8A878", fontSize: "0.875rem" }}>›</span>
-      </div>
-    );
-  }
-
-  // 购物车为空但今天已经确定过菜单
-  if (todayLog) {
-    const total = todayLog.items.reduce((s, i) => s + i.quantity, 0);
-    const names = todayLog.items.map(i => i.name).join("、");
-    return (
-      <div style={{
-        margin: "12px 16px 0", padding: "12px 14px",
-        backgroundColor: "#EAF5EA", borderRadius: "16px",
-        display: "flex", alignItems: "center", gap: "10px",
-        border: "1px solid rgba(120,180,120,0.25)",
-      }}>
-        <span style={{ fontSize: "1.25rem" }}>✅</span>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ color: "#3A2A1A", fontSize: "0.8125rem", fontWeight: 700 }}>
-            今日菜单已确定 · 共 {total} 道
-          </p>
-          <p style={{
-            color: "#7FA37F", fontSize: "0.6875rem", marginTop: "2px",
-            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-          }}>
-            {names}
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  return null;
-}
-
 /* ─── 今日菜单 Modal ─── */
 function SendModal({ cartItems, categories, onClose, onDone, onSave, onIncrease, onDecrease }: {
   cartItems: ReturnType<typeof useCart>["cartItems"];
@@ -395,10 +335,7 @@ function SendModal({ cartItems, categories, onClose, onDone, onSave, onIncrease,
 export default function OrderPage() {
   const { categories, items, addItem, updateItem, deleteItem } = useStore();
   const { cartItems, addToCart, decreaseFromCart, clearCart, getQuantity, totalItems } = useCart(items, categories);
-  const { logs, saveLog } = useMealLog();
-
-  const todayStr = new Date().toISOString().split("T")[0];
-  const todayLog = logs.find(l => l.date === todayStr);
+  const { saveLog } = useMealLog();
 
   const [activeCatId, setActiveCatId] = useState<string>("");
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
@@ -452,12 +389,6 @@ export default function OrderPage() {
         />
       </div>
 
-      <TodayStatusBanner
-        todayLog={todayLog}
-        totalItems={totalItems}
-        onClick={() => setShowSendModal(true)}
-      />
-
       {/* ── Body ── */}
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
         <Sidebar categories={sortedCats} activeId={activeCatId} onChange={handleCatChange} />
@@ -502,55 +433,34 @@ export default function OrderPage() {
         </div>
       </div>
 
-      {/* ── Floating bar ── */}
+      {/* ── Floating cart button ── */}
       {totalItems > 0 && (
-        <div style={{
-          position: "fixed",
-          bottom: `calc(${navH} + 10px)`,
-          left: "50%", transform: "translateX(-50%)",
-          width: "calc(100% - 48px)", maxWidth: "380px",
-          zIndex: 40,
-        }}>
-          <div style={{
-            display: "flex", alignItems: "center",
-            background: "rgba(255, 250, 242, 0.82)",
-            backdropFilter: "blur(16px)",
-            WebkitBackdropFilter: "blur(16px)",
-            borderRadius: "20px",
-            border: "1px solid rgba(240, 210, 160, 0.55)",
-            padding: "8px 8px 8px 14px",
-            boxShadow: "0 4px 20px rgba(120,80,40,0.13)",
-          }}>
-            <div style={{
-              width: "32px", height: "32px", borderRadius: "10px",
-              background: "linear-gradient(180deg, #F5B460, #E8991E)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              flexShrink: 0, position: "relative", marginRight: "10px",
-            }}>
-              <span style={{ fontSize: "0.875rem" }}>🧺</span>
-              <span style={{
-                position: "absolute", top: "-4px", right: "-4px",
-                backgroundColor: "#E85D2F", color: "#FFFFFF",
-                fontSize: "0.5rem", fontWeight: 800,
-                borderRadius: "999px", padding: "1px 4px",
-                minWidth: "14px", textAlign: "center",
-              }}>{totalItems}</span>
-            </div>
-            <p style={{ flex: 1, color: "#3C2415", fontSize: "0.8125rem", fontWeight: 700 }}>
-              已选 {totalItems} 样
-            </p>
-            <button
-              onClick={() => setShowSendModal(true)}
-              style={{
-                padding: "8px 18px", borderRadius: "14px",
-                background: "linear-gradient(180deg, #F5B460 0%, #E8991E 100%)",
-                color: "#FFFFFF", fontSize: "0.8125rem", fontWeight: 700,
-                border: "none", cursor: "pointer",
-                boxShadow: "0 3px 10px rgba(232,153,30,0.38)",
-              }}
-            >点菜</button>
-          </div>
-        </div>
+        <button
+          onClick={() => setShowSendModal(true)}
+          style={{
+            position: "fixed",
+            bottom: `calc(${navH} + 14px)`,
+            right: "20px",
+            zIndex: 40,
+            width: "64px", height: "64px",
+            borderRadius: "22px",
+            border: "none", cursor: "pointer", padding: 0,
+            background: "linear-gradient(160deg, #FFC371 0%, #E8991E 100%)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            boxShadow: "0 8px 24px rgba(232,153,30,0.45)",
+          }}
+        >
+          <span style={{ fontSize: "2rem", lineHeight: 1 }}>🛒</span>
+          <span style={{
+            position: "absolute", top: "-6px", right: "-6px",
+            backgroundColor: "#E85D2F", color: "#FFFFFF",
+            fontSize: "0.75rem", fontWeight: 800,
+            borderRadius: "999px", padding: "2px 7px",
+            minWidth: "22px", textAlign: "center",
+            boxShadow: "0 2px 6px rgba(232,93,47,0.5)",
+            border: "2px solid #FFFDF8",
+          }}>{totalItems}</span>
+        </button>
       )}
 
       {/* ── Modals ── */}
