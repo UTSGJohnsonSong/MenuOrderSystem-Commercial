@@ -76,15 +76,15 @@ export function useCart(items: MenuItem[], categories: Category[]) {
     };
   }, []);
 
-  const applyChange = async (body: { item_id: string; delta?: number; quantity?: number }) => {
+  // 写请求只发出去，不用它的返回值覆盖本地状态——
+  // 并发点击时多个请求的返回顺序可能和点击顺序不一致，
+  // 用旧请求的返回值覆盖会导致数字"跳回去"。本地的乐观更新已经是最新状态，
+  // 其他设备的改动交给下面的轮询同步即可。
+  const applyChange = (body: { item_id: string; delta?: number; quantity?: number }) => {
     pendingRef.current++;
-    try {
-      const res = await fetch("/api/cart", { method: "POST", body: JSON.stringify(body) });
-      const rows: { item_id: string; quantity: number }[] = await res.json();
-      applyRows(rows);
-    } finally {
-      pendingRef.current--;
-    }
+    fetch("/api/cart", { method: "POST", body: JSON.stringify(body) })
+      .catch(() => {})
+      .finally(() => { pendingRef.current--; });
   };
 
   const addToCart = (item: MenuItem, _category: Category) => {
