@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { MenuItem, Category } from "@/lib/types";
+import { uploadImage } from "@/lib/store";
 
 interface Props {
   item: MenuItem | null;
@@ -66,10 +67,12 @@ export default function ItemForm({ item, categories, existingItems, onSave, onCa
     if (!file) return;
     setUploading(true);
     try {
+      // 压缩后上传到服务器存文件，数据库里只存 URL（不再把 base64 塞进数据库）
       const compressed = await compressImage(file);
-      setImageUrl(compressed);
+      const url = await uploadImage(compressed);
+      setImageUrl(url);
     } catch {
-      setError("图片处理失败，请重试");
+      setError("图片上传失败，请重试");
     } finally {
       setUploading(false);
       e.target.value = "";

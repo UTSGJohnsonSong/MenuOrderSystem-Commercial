@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useStore, useCart } from "@/lib/store";
 import ItemForm from "@/components/ItemForm";
 import { MenuItem } from "@/lib/types";
@@ -31,6 +32,7 @@ function EntryCard({ label, desc, color, onClick }: {
 }
 
 export default function ChufangPage() {
+  const router = useRouter();
   const { categories, items, addItem, updateItem, deleteItem } = useStore();
   const { totalItems } = useCart(items, categories);
   const [view, setView] = useState<"home" | "manage">("home");
@@ -149,16 +151,16 @@ export default function ChufangPage() {
             onClick={() => setView("manage")}
           />
           <EntryCard
-            label="分类管理"
-            desc="整理菜品分类"
+            label="邀请 TA"
+            desc="一起点菜一起吃饭"
             color="#D6EAD6"
-            onClick={() => {}}
+            onClick={() => router.push("/settings")}
           />
           <EntryCard
-            label="我的收藏"
-            desc="常吃的喜欢的菜"
+            label="小厨房设置"
+            desc="名字、邀请码、成员"
             color="#D6E0FF"
-            onClick={() => {}}
+            onClick={() => router.push("/settings")}
           />
         </div>
 

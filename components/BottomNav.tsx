@@ -51,8 +51,12 @@ const tabs = [
   { href: "/chufang", label: "厨房", Icon: IconKitchen },
 ];
 
+// 登录前的公开页面和沉浸式流程页不显示底部导航
+const HIDDEN_PATHS = ["/welcome", "/login", "/join", "/onboarding", "/privacy", "/terms"];
+
 export default function BottomNav() {
   const pathname = usePathname();
+  if (HIDDEN_PATHS.some(p => pathname === p || pathname.startsWith(p + "/"))) return null;
 
   return (
     <nav style={{

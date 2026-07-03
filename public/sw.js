@@ -1,4 +1,4 @@
-const CACHE = "zeze-kitchen-v2";
+const CACHE = "chishenmeya-v1";
 
 const PRECACHE = [
   "/",
@@ -33,6 +33,11 @@ self.addEventListener("fetch", event => {
 
   const url = new URL(request.url);
 
+  // API 一律直连不缓存（登录态/多租户数据，缓存会串数据）。
+  // 唯一例外：/api/uploads/ 下的菜品图片是不可变文件，走图片缓存策略。
+  const isUploadedImage = url.pathname.startsWith("/api/uploads/");
+  if (url.pathname.startsWith("/api/") && !isUploadedImage) return;
+
   // _next/static: immutable, cache-first
   if (url.pathname.startsWith("/_next/static/")) {
     event.respondWith(
@@ -48,7 +53,7 @@ self.addEventListener("fetch", event => {
   }
 
   // Images: cache-first, fall back to network + cache
-  if (request.destination === "image") {
+  if (request.destination === "image" || isUploadedImage) {
     event.respondWith(
       caches.match(request).then(hit => hit || fetch(request).then(res => {
         if (res.ok) {

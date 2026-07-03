@@ -1,71 +1,58 @@
-# MenuOrderSystem（家庭点菜系统）
+# 今天吃什么呀（MenuOrderSystem-Commercial）
 
-一个为家庭设计的私家菜单点菜应用。家人可以在手机上浏览菜品、点菜、查看历史食记，厨房一方可以管理菜品库。所有数据存储在云端数据库，多台设备打开同一个链接即可实时同步。
+和对象、室友一起维护你们自己的菜单库：想吃什么点一点，吃过什么都记得。
+多租户商用版——每组用户拥有独立的「小厨房」（菜单库 + 食记），手机验证码登录，互不可见。
 
-在线访问：[family-menu-indol.vercel.app](https://family-menu-indol.vercel.app)
+国内部署与备案指南见 **[DEPLOY_CN.md](./DEPLOY_CN.md)**；产品规划见 [COMMERCIALIZATION_PLAN.md](./COMMERCIALIZATION_PLAN.md)。
 
-## 功能介绍
+## 功能
 
-### 🍽️ 点菜（首页 `/`）
-- 按分类（早餐、米饭、面面、肉肉、菜菜、果果、甜甜、小药）浏览菜品
-- 点击菜品卡片查看详情（食材、做法、备注）
-- `+` / `-` 加减数量，加入今日菜单
-- 自动记住上次浏览的分类（`sessionStorage`）
-- 「今日菜单」弹窗：分组展示已选菜品，可一键复制文字发送给主厨，也可保存到食记
-- 保存到食记后自动清空购物车
+### 🏠 小厨房（多租户）
+- 手机验证码登录，首次登录自动创建自己的小厨房（自带家常菜谱模板）
+- 6 位邀请码 / 邀请链接拉 TA 加入，可重置；成员上限 8 人
+- 所有数据按空间隔离，API 层统一 `requireCurrentSpace()` 收口
+
+### 🍽️ 点菜（`/`）
+- 按分类浏览菜品，点卡片看详情（食材、做法、备注）
+- 加减数量组成「今日菜单」，一键复制发给主厨，或保存到食记
 
 ### 📖 食记（`/shiji`）
-- 按月份分组展示历史点菜记录
-- 每条记录显示日期、星期、菜品分类与数量
-- 支持删除某天的记录
-- 今天还没记录时会有提示
+- 按月分组的历史点菜记录，同一天重复保存自动覆盖
 
 ### 🧑‍🍳 厨房（`/chufang`）
-- 添加 / 编辑 / 删除菜品
-- **手机相册上传图片**：选择照片后自动压缩（最长边 800px，JPEG 75% 质量）后存储
-- 菜品管理列表，按分类分组展示
-- 数据看板：菜品总数、分类数量、今日已点份数
+- 添加 / 编辑 / 归档菜品；相册选图自动压缩后上传（文件存储，不占数据库）
+- 小厨房设置：改名、邀请码、成员管理、退出
 
-### 📱 PWA 支持
-- 可「添加到主屏幕」，全屏运行，无浏览器地址栏
-- 自定义图标（🦔🦥）
-- 离线缓存（Service Worker）
-
-## 跨设备同步
-
-所有数据（菜品库、分类、购物车、食记）存储在 **Neon Postgres**（Serverless Postgres）数据库中，通过 Next.js API 路由读写。任何设备打开同一个链接，看到的都是同一份实时数据。
+### 其他
+- PWA：可添加到主屏幕、离线缓存（API 不缓存，不串数据）
+- `/privacy` `/terms` 法务页；落地页底部展示 ICP 备案号（`NEXT_PUBLIC_ICP_NUMBER`）
 
 ## 技术栈
 
-- **框架**：Next.js 16（App Router + Turbopack）
-- **语言**：TypeScript + React 19
-- **数据库**：Neon Postgres（`@neondatabase/serverless`）
-- **部署**：Vercel
-- **样式**：内联样式（家庭暖色系视觉风格）
+- Next.js 16（App Router）+ TypeScript + React 19
+- Postgres（node-postgres，任何 Postgres 都能连：本地 Docker / 腾讯云 / 阿里云 RDS / Neon）
+- 自建手机验证码登录（阿里云短信，可扩展其他厂商），会话存库（token 只存哈希）
+- Docker 部署（standalone 输出，见 `Dockerfile` / `docker-compose.yml`）
 
 ## 项目结构
 
 ```
 app/
-  page.tsx              # 点菜首页
-  shiji/page.tsx        # 食记页
-  chufang/page.tsx      # 厨房（菜品管理）
+  welcome/ login/ onboarding/ join/     # 登录与邀请流程
+  settings/ privacy/ terms/             # 设置与法务页
+  page.tsx shiji/ chufang/              # 点菜 / 食记 / 厨房
   api/
-    categories/         # 分类接口
-    items/              # 菜品 CRUD
-    cart/                # 购物车读写
-    logs/                # 食记 CRUD
-components/
-  ItemForm.tsx          # 添加/编辑菜品表单（含图片上传压缩）
-  ItemDetailModal.tsx   # 菜品详情弹窗
-  BottomNav.tsx         # 底部导航
+    auth/                               # send-code / verify / logout / me
+    space/                              # 空间信息 / 加入 / 退出 / 邀请码 / 预览
+    categories/ items/ logs/            # 业务数据（全部按空间隔离）
+    upload/ uploads/                    # 图片上传与访问
 lib/
-  db.ts                 # 数据库连接
-  store.ts              # 数据读写 Hooks（useStore / useCart / useMealLog）
-  types.ts              # 类型定义
-  data.ts               # 默认菜品数据（用于初始化种子数据）
-scripts/
-  setup-db.ts           # 数据库建表与种子数据脚本
+  db.ts        # pg 连接池 + sql`` 模板 + 事务
+  schema.ts    # 幂等建表（启动自动执行）
+  auth.ts      # 会话 / requireCurrentSpace / 错误处理
+  sms.ts       # 短信通道（console / aliyun）
+  space.ts     # 建空间 / 邀请码 / 加入
+proxy.ts       # 未登录访客重定向到落地页
 ```
 
 ## 本地开发
@@ -73,23 +60,21 @@ scripts/
 ```bash
 npm install
 
-# 配置数据库连接（.env.local）
-# DATABASE_URL=postgres://...
+# 起个本地 Postgres
+docker run -d --name menudb -p 5432:5432 -e POSTGRES_PASSWORD=dev postgres:16-alpine
 
-# 初始化数据库表结构与种子数据
-npx tsx scripts/setup-db.ts
+cp .env.example .env.local   # 默认连上面的本地库，短信走 console 模式
 
-npm run dev
+npm run dev                  # 首次启动自动建表
 ```
 
-打开 [http://localhost:3000](http://localhost:3000)
+打开 http://localhost:3000 —— 开发模式下验证码直接显示在登录页，随便填个手机号即可体验完整流程。
 
-## 部署
-
-项目已配置好 Vercel + Neon Postgres 集成，推送到 `main`/`master` 分支后可通过：
+## 生产部署
 
 ```bash
-npx vercel --prod
+cp .env.example .env   # 配好 DB_PASSWORD / 阿里云短信 / 备案号
+docker compose up -d --build
 ```
 
-部署到生产环境。
+详细步骤（服务器选型、Nginx + HTTPS、ICP 备案、短信签名申请、备份）见 [DEPLOY_CN.md](./DEPLOY_CN.md)。

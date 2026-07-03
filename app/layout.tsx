@@ -13,24 +13,21 @@ export const viewport: Viewport = {
 
 /* ── Metadata ── */
 export const metadata: Metadata = {
-  title: "泽泽专属厨房",
-  description: "我们的私家菜单",
+  title: "今天吃什么呀",
+  description: "和对象、室友一起维护你们自己的菜单库",
   manifest: "/manifest.json",
 
   /* iOS PWA */
   appleWebApp: {
     capable: true,
-    title: "泽泽厨房",
+    title: "吃什么呀",
     statusBarStyle: "default",   // Light iOS status bar (fits cream top)
   },
 
-  /* Prevent indexing (private family app) */
-  robots: { index: false, follow: false },
-
   /* OG / share preview */
   openGraph: {
-    title: "泽泽专属厨房",
-    description: "我们的私家菜单",
+    title: "今天吃什么呀",
+    description: "和对象、室友一起维护你们自己的菜单库",
     type: "website",
   },
 };

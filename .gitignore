@@ -42,3 +42,7 @@ next-env.d.ts
 
 .vercel
 .env*
+!.env.example
+
+# 本地图片上传目录（生产在 Docker 卷里）
+/uploads

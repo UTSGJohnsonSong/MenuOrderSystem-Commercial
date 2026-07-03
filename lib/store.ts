@@ -3,6 +3,22 @@
 import { useState, useEffect, useCallback } from "react";
 import { Category, MenuItem, CartItem, MealLog } from "./types";
 
+/* 统一处理登录态失效：401 回落地页，403（没有空间）去 onboarding */
+async function apiFetch<T>(url: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(url, init);
+  if (res.status === 401) {
+    window.location.href = "/welcome";
+    return new Promise<T>(() => {}); // 跳转中，挂起即可
+  }
+  if (res.status === 403) {
+    window.location.href = "/onboarding";
+    return new Promise<T>(() => {});
+  }
+  const data = await res.json();
+  if (!res.ok) throw new Error((data as { error?: string }).error ?? "请求失败");
+  return data as T;
+}
+
 /* ─── useStore ─── */
 export function useStore() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -10,8 +26,8 @@ export function useStore() {
 
   useEffect(() => {
     const fetchAll = () => {
-      fetch("/api/categories").then(r => r.json()).then(setCategories);
-      fetch("/api/items").then(r => r.json()).then(setItems);
+      apiFetch<Category[]>("/api/categories").then(setCategories).catch(() => {});
+      apiFetch<MenuItem[]>("/api/items").then(setItems).catch(() => {});
     };
     fetchAll();
 
@@ -21,14 +37,12 @@ export function useStore() {
   }, []);
 
   const addItem = async (item: MenuItem) => {
-    const res = await fetch("/api/items", { method: "POST", body: JSON.stringify(item) });
-    const saved = await res.json();
+    const saved = await apiFetch<MenuItem>("/api/items", { method: "POST", body: JSON.stringify(item) });
     setItems(prev => [...prev, saved]);
   };
 
   const updateItem = async (item: MenuItem) => {
-    const res = await fetch(`/api/items/${item.id}`, { method: "PUT", body: JSON.stringify(item) });
-    const saved = await res.json();
+    const saved = await apiFetch<MenuItem>(`/api/items/${item.id}`, { method: "PUT", body: JSON.stringify(item) });
     setItems(prev => prev.map(i => i.id === saved.id ? saved : i));
   };
 
@@ -121,8 +135,16 @@ export function useCart(items: MenuItem[], categories: Category[]) {
 
 // 单次保存食记，不需要订阅整个列表（点菜页用这个，避免不必要的轮询重渲染）
 export async function saveMealLog(log: MealLog): Promise<MealLog> {
-  const res = await fetch("/api/logs", { method: "POST", body: JSON.stringify(log) });
-  return res.json();
+  return apiFetch<MealLog>("/api/logs", { method: "POST", body: JSON.stringify(log) });
+}
+
+// 图片上传：客户端压缩后的 jpeg dataURL → 服务器文件 → 返回可直接用的 URL
+export async function uploadImage(dataUrl: string): Promise<string> {
+  const { url } = await apiFetch<{ url: string }>("/api/upload", {
+    method: "POST",
+    body: JSON.stringify({ dataUrl }),
+  });
+  return url;
 }
 
 /* ─── useMealLog ─── */
@@ -131,10 +153,10 @@ export function useMealLog() {
 
   useEffect(() => {
     const fetchLogs = () => {
-      fetch("/api/logs").then(r => r.json()).then((next: MealLog[]) => {
+      apiFetch<MealLog[]>("/api/logs").then(next => {
         // 数据没变化时不更新 state，避免每次轮询都触发重渲染
         setLogs(prev => JSON.stringify(prev) === JSON.stringify(next) ? prev : next);
-      });
+      }).catch(() => {});
     };
     fetchLogs();
 
