@@ -15,7 +15,10 @@ services:
       retries: 10
 
   app:
-    build: .
+    build:
+      context: .
+      args:
+        NPM_REGISTRY: ${NPM_REGISTRY:-https://registry.npmjs.org}
     restart: unless-stopped
     depends_on:
       db:
@@ -23,6 +26,8 @@ services:
     environment:
       DATABASE_URL: postgres://menuapp:${DB_PASSWORD}@db:5432/menuapp
       SMS_PROVIDER: ${SMS_PROVIDER:-console}
+      SMS_CONSOLE_IN_PROD: ${SMS_CONSOLE_IN_PROD:-}
+      ADMIN_PHONES: ${ADMIN_PHONES:-}
       ALIYUN_ACCESS_KEY_ID: ${ALIYUN_ACCESS_KEY_ID:-}
       ALIYUN_ACCESS_KEY_SECRET: ${ALIYUN_ACCESS_KEY_SECRET:-}
       ALIYUN_SMS_SIGN_NAME: ${ALIYUN_SMS_SIGN_NAME:-}

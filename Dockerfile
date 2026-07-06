@@ -2,9 +2,9 @@
 FROM node:22-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
-# 国内服务器构建时取消下一行注释，走 npmmirror 加速
-# RUN npm config set registry https://registry.npmmirror.com
-RUN npm ci
+# 国内服务器构建时在 .env 设 NPM_REGISTRY=https://registry.npmmirror.com 加速
+ARG NPM_REGISTRY=https://registry.npmjs.org
+RUN npm config set registry "$NPM_REGISTRY" && npm ci
 
 FROM node:22-alpine AS builder
 WORKDIR /app

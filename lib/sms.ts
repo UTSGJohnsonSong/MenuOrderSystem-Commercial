@@ -17,7 +17,9 @@ export async function sendSmsCode(phone: string, code: string): Promise<void> {
     return;
   }
 
-  if (process.env.NODE_ENV === "production") {
+  // SMS_CONSOLE_IN_PROD=1 仅限备案期内测：验证码只打到服务器日志（docker compose logs app），
+  // 不会返回给页面。正式上线（配好阿里云短信）后必须从 .env 移除这个开关。
+  if (process.env.NODE_ENV === "production" && process.env.SMS_CONSOLE_IN_PROD !== "1") {
     // 生产环境没配真实短信通道时直接报错，避免出现"谁都登不进"或调试通道泄漏
     throw new Error("SMS_PROVIDER 未配置，生产环境必须接入真实短信服务");
   }
