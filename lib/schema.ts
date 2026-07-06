@@ -45,6 +45,11 @@ export async function ensureSchema() {
     )
   `;
 
+  // 主页封面（space 级装饰，全员共享）：preset = 内置封面 id；
+  // image_url 预留给以后的自定义上传，存在时优先于 preset
+  await sql`ALTER TABLE spaces ADD COLUMN IF NOT EXISTS cover_preset TEXT NOT NULL DEFAULT 'warm-orange'`;
+  await sql`ALTER TABLE spaces ADD COLUMN IF NOT EXISTS cover_image_url TEXT`;
+
   await sql`
     CREATE TABLE IF NOT EXISTS space_members (
       space_id  UUID NOT NULL REFERENCES spaces(id) ON DELETE CASCADE,

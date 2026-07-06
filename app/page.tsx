@@ -4,8 +4,19 @@ import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useStore, useCart, saveMealLog } from "@/lib/store";
 import { MenuItem, Category, MealLog } from "@/lib/types";
+import { COVER_PRESETS, getCover } from "@/lib/covers";
 import ItemDetailModal from "@/components/ItemDetailModal";
 import ItemForm from "@/components/ItemForm";
+
+function greeting(): string {
+  const h = new Date().getHours();
+  if (h >= 5 && h < 10) return "早上好";
+  if (h >= 10 && h < 14) return "中午好";
+  if (h >= 14 && h < 18) return "下午好";
+  return "晚上好";
+}
+
+interface SpaceLite { name: string; cover_preset: string; cover_image_url: string | null }
 
 /* ─── icons & helpers ─── */
 const CAT_ICONS: Record<string, string> = {
@@ -332,6 +343,59 @@ function SendModal({ cartItems, categories, onClose, onDone, onSave, onIncrease,
   );
 }
 
+/* ─── 换封面 Bottom Sheet ─── */
+function CoverSheet({ current, onPick, onClose }: {
+  current: string;
+  onPick: (id: string) => void;
+  onClose: () => void;
+}) {
+  return (
+    <div onClick={onClose} style={{
+      position: "fixed", inset: 0, zIndex: 60,
+      backgroundColor: "rgba(45,31,20,0.45)",
+      display: "flex", alignItems: "flex-end",
+    }}>
+      <div onClick={e => e.stopPropagation()} style={{
+        width: "100%", backgroundColor: "#FFF8EF",
+        borderRadius: "26px 26px 0 0", padding: "22px 16px",
+        paddingBottom: "calc(22px + env(safe-area-inset-bottom))",
+      }}>
+        <p style={{ color: "#3A2A1A", fontSize: "1rem", fontWeight: 800, textAlign: "center" }}>
+          换一个小厨房封面
+        </p>
+        <p style={{ color: "#9A7B5F", fontSize: "0.75rem", textAlign: "center", marginTop: "4px", marginBottom: "16px" }}>
+          你们俩都能换，换了 TA 也看得到
+        </p>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+          {COVER_PRESETS.map(p => {
+            const selected = p.id === current;
+            return (
+              <button key={p.id} onClick={() => onPick(p.id)} style={{
+                position: "relative", height: "76px", borderRadius: "16px",
+                background: p.bg, cursor: "pointer", overflow: "hidden",
+                border: selected ? "2.5px solid #E8991E" : "2.5px solid transparent",
+                boxShadow: selected ? "0 4px 14px rgba(232,153,30,0.35)" : "0 2px 8px rgba(58,42,26,0.08)",
+                textAlign: "left", padding: 0,
+              }}>
+                <span style={{ position: "absolute", top: "6px", right: "10px", fontSize: "1.375rem", opacity: 0.9 }}>
+                  {p.deco[0]}
+                </span>
+                <span style={{
+                  position: "absolute", bottom: "8px", left: "12px",
+                  fontSize: "0.8125rem", fontWeight: 700,
+                  color: p.dark ? "#FFF6E8" : "#5A3A22",
+                }}>
+                  {p.label}{selected ? " ✓" : ""}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ─── 「随便吃什么」随机选菜 Modal ─── */
 function RandomModal({ item, category, poolSize, onAgain, onAccept, onClose, onGoLibrary, onGoKitchen }: {
   item: MenuItem | null;
@@ -449,6 +513,41 @@ export default function OrderPage() {
   const [showForm, setShowForm] = useState(false);
   const [showRandom, setShowRandom] = useState(false);
   const [randomItem, setRandomItem] = useState<MenuItem | null>(null);
+  const [space, setSpace] = useState<SpaceLite | null>(null);
+  const [showCoverSheet, setShowCoverSheet] = useState(false);
+  const [toast, setToast] = useState("");
+
+  // 小厨房信息（名字 + 封面）：进页面拉一次，切回前台再刷（TA 换的封面也能看到）
+  useEffect(() => {
+    const fetchSpace = () => {
+      fetch("/api/space").then(r => r.ok ? r.json() : null).then(d => {
+        if (d) setSpace({ name: d.name, cover_preset: d.cover_preset, cover_image_url: d.cover_image_url });
+      }).catch(() => {});
+    };
+    fetchSpace();
+    const onVisible = () => { if (document.visibilityState === "visible") fetchSpace(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, []);
+
+  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 2400); };
+
+  const changeCover = async (presetId: string) => {
+    if (!space) return;
+    const prev = space.cover_preset;
+    setSpace({ ...space, cover_preset: presetId }); // 即时预览
+    setShowCoverSheet(false);
+    try {
+      const res = await fetch("/api/space", { method: "PATCH", body: JSON.stringify({ cover_preset: presetId }) });
+      if (!res.ok) {
+        setSpace(s => s ? { ...s, cover_preset: prev } : s);
+        showToast(res.status === 403 ? "这个小厨房暂时不能这样改哦" : "封面暂时没换成功，等会儿再试试～");
+      }
+    } catch {
+      setSpace(s => s ? { ...s, cover_preset: prev } : s);
+      showToast("封面暂时没换成功，等会儿再试试～");
+    }
+  };
 
   // 随机池：当前小厨房里所有可点的菜（useStore 的数据本身就只含本空间，归档的菜接口层已排除）
   const randomPool = useMemo(() => items.filter(i => i.is_active), [items]);
@@ -497,18 +596,71 @@ export default function OrderPage() {
       display: "flex", flexDirection: "column",
       background: "linear-gradient(180deg, #FFFDF8 0%, #FFF7EA 100%)",
     }}>
-      {/* ── Banner ── */}
-      <div style={{ flexShrink: 0, width: "100%", aspectRatio: "1916 / 821", overflow: "hidden" }}>
-        <img
-          src="/header-bg.png"
-          alt=""
-          style={{
-            width: "100%", height: "100%",
-            objectFit: "cover", objectPosition: "center",
-            display: "block",
-          }}
-        />
-      </div>
+      {/* ── 小厨房封面卡 ── */}
+      {(() => {
+        const cover = getCover(space?.cover_preset);
+        const textColor = cover.dark ? "#FFF6E8" : "#4A2E1F";
+        const subColor = cover.dark ? "rgba(255,246,232,0.85)" : "#8A5A2B";
+        return (
+          <section style={{
+            flexShrink: 0, margin: "12px 12px 4px",
+            height: "188px", borderRadius: "24px",
+            position: "relative", overflow: "hidden",
+            background: cover.bg,
+            boxShadow: "0 6px 20px rgba(120,80,40,0.12)",
+          }}>
+            {/* 自定义封面图（预留：存在时盖在渐变上） */}
+            {space?.cover_image_url && (
+              <img src={space.cover_image_url} alt="" style={{
+                position: "absolute", inset: 0, width: "100%", height: "100%",
+                objectFit: "cover",
+              }} onError={e => { e.currentTarget.style.display = "none"; }} />
+            )}
+            {/* 轻装饰 */}
+            <span style={{ position: "absolute", top: "14px", right: "64px", fontSize: "3.25rem", opacity: 0.5, transform: "rotate(8deg)" }}>
+              {cover.deco[0]}
+            </span>
+            <span style={{ position: "absolute", bottom: "18px", right: "22px", fontSize: "1.75rem", opacity: 0.45, transform: "rotate(-10deg)" }}>
+              {cover.deco[1]}
+            </span>
+            {/* 文字可读性遮罩 */}
+            <div style={{
+              position: "absolute", inset: 0,
+              background: cover.dark
+                ? "linear-gradient(0deg, rgba(30,18,10,0.30) 0%, rgba(30,18,10,0) 55%)"
+                : "linear-gradient(0deg, rgba(255,252,246,0.35) 0%, rgba(255,252,246,0) 55%)",
+            }} />
+            {/* 换封面按钮 */}
+            <button onClick={() => setShowCoverSheet(true)} style={{
+              position: "absolute", top: "12px", right: "12px", zIndex: 2,
+              padding: "7px 13px", borderRadius: "999px", border: "none", cursor: "pointer",
+              backgroundColor: cover.dark ? "rgba(0,0,0,0.28)" : "rgba(255,255,255,0.55)",
+              color: cover.dark ? "#FFF6E8" : "#8A5A2B",
+              fontSize: "0.75rem", fontWeight: 600,
+              backdropFilter: "blur(4px)",
+            }}>
+              🎨 换封面
+            </button>
+            {/* 文案 */}
+            <div style={{ position: "absolute", left: "20px", right: "20px", bottom: "18px", zIndex: 1 }}>
+              <p style={{ color: subColor, fontSize: "0.8125rem", fontWeight: 500 }}>
+                {greeting()}，欢迎回到
+              </p>
+              <h1 style={{
+                color: textColor, fontSize: "1.5rem", fontWeight: 800,
+                marginTop: "2px", lineHeight: 1.3,
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                textShadow: cover.dark ? "0 1px 8px rgba(0,0,0,0.25)" : "0 1px 8px rgba(255,255,255,0.5)",
+              }}>
+                「{space?.name || "我们的小厨房"}」
+              </h1>
+              <p style={{ color: subColor, fontSize: "0.875rem", marginTop: "3px" }}>
+                今天想吃什么呀？
+              </p>
+            </div>
+          </section>
+        );
+      })()}
 
       {/* ── Body ── */}
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
@@ -665,6 +817,24 @@ export default function OrderPage() {
           }}
           onCancel={() => { setShowForm(false); setFormItem(null); }}
         />
+      )}
+
+      {showCoverSheet && space && (
+        <CoverSheet
+          current={space.cover_preset}
+          onPick={changeCover}
+          onClose={() => setShowCoverSheet(false)}
+        />
+      )}
+
+      {toast && (
+        <div style={{
+          position: "fixed", bottom: `calc(${navH} + 90px)`, left: "50%",
+          transform: "translateX(-50%)", zIndex: 70,
+          backgroundColor: "rgba(60,36,21,0.92)", color: "#FFF",
+          padding: "10px 20px", borderRadius: "999px",
+          fontSize: "0.8125rem", whiteSpace: "nowrap",
+        }}>{toast}</div>
       )}
 
       {showRandom && (
