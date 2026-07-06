@@ -22,6 +22,8 @@ interface Overview {
   library_images: number;
 }
 
+interface SmsCode { phone: string; code: string; status: string; at: string }
+
 export default function AdminPage() {
   const router = useRouter();
   const [overview, setOverview] = useState<Overview | null>(null);
@@ -31,6 +33,13 @@ export default function AdminPage() {
   const [onlyMissing, setOnlyMissing] = useState(false);
   const [busy, setBusy] = useState<string | null>(null); // 正在上传的菜名
   const [msg, setMsg] = useState("");
+  const [smsCodes, setSmsCodes] = useState<SmsCode[] | null>(null);
+
+  const loadSmsCodes = () => {
+    fetch("/api/admin/sms-codes").then(async r => {
+      if (r.ok) setSmsCodes((await r.json()).codes);
+    }).catch(() => {});
+  };
 
   useEffect(() => {
     fetch("/api/admin/overview").then(async r => {
@@ -39,6 +48,7 @@ export default function AdminPage() {
       setOverview(await r.json());
     }).catch(() => router.replace("/"));
     fetch("/api/library/images").then(r => r.json()).then(d => setImages(d.images ?? {})).catch(() => {});
+    loadSmsCodes();
   }, [router]);
 
   const flash = (m: string) => { setMsg(m); setTimeout(() => setMsg(""), 2500); };
@@ -113,6 +123,30 @@ export default function AdminPage() {
             }}>{label}</button>
           ))}
         </div>
+
+        {tab === "overview" && smsCodes && smsCodes.length > 0 && (
+          <div style={{
+            backgroundColor: "#FFF9E6", border: "1px solid #E8D48A", borderRadius: "8px",
+            padding: "14px 16px", marginBottom: "16px",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "8px" }}>
+              <p style={{ fontSize: "13px", fontWeight: 700, color: "#8A6D1B" }}>
+                📨 最近验证码（内测通道，接通真实短信后自动消失）
+              </p>
+              <button onClick={loadSmsCodes} style={{
+                fontSize: "12px", color: "#8A6D1B", border: "1px solid #E8D48A",
+                borderRadius: "4px", padding: "2px 10px", background: "#FFF", cursor: "pointer",
+              }}>刷新</button>
+            </div>
+            {smsCodes.map((c, i) => (
+              <p key={i} style={{ fontSize: "13px", color: "#555", padding: "2px 0", fontFamily: "monospace" }}>
+                {c.phone} → <strong style={{ fontSize: "15px" }}>{c.code}</strong>
+                <span style={{ color: c.status === "有效" ? "#0a7" : "#aaa", marginLeft: "10px" }}>{c.status}</span>
+                <span style={{ color: "#bbb", marginLeft: "10px" }}>{new Date(c.at).toLocaleTimeString("zh-CN")}</span>
+              </p>
+            ))}
+          </div>
+        )}
 
         {tab === "overview" && (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "12px" }}>
