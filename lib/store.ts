@@ -60,7 +60,20 @@ function loadCart(): Record<string, number> {
   if (typeof window === "undefined") return {};
   try {
     const raw = localStorage.getItem(CART_KEY);
-    return raw ? JSON.parse(raw) : {};
+    const parsed: unknown = raw ? JSON.parse(raw) : {};
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    // 只保留正整数数量。旧版本（私人版）购物车存的是 {item, quantity} 对象，
+    // 直接参与 reduce 会拼出 "0[object Object]"，这里一并过滤掉
+    const clean: Record<string, number> = {};
+    for (const [id, v] of Object.entries(parsed as Record<string, unknown>)) {
+      const q = typeof v === "number"
+        ? v
+        : v && typeof v === "object" && typeof (v as { quantity?: unknown }).quantity === "number"
+          ? (v as { quantity: number }).quantity
+          : 0;
+      if (Number.isFinite(q) && q > 0) clean[id] = Math.floor(q);
+    }
+    return clean;
   } catch {
     return {};
   }
@@ -119,8 +132,6 @@ export function useCart(items: MenuItem[], categories: Category[]) {
 
   const isInCart = (itemId: string) => (quantities[itemId] ?? 0) > 0;
 
-  const totalItems = Object.values(quantities).reduce((s, q) => s + q, 0);
-
   const cartItems: CartItem[] = Object.entries(quantities)
     .map(([itemId, quantity]) => {
       const item = items.find(i => i.id === itemId);
@@ -129,6 +140,9 @@ export function useCart(items: MenuItem[], categories: Category[]) {
       return { item, category, quantity };
     })
     .filter((c): c is CartItem => c !== null);
+
+  // 只统计当前空间真实存在的菜，残留的过期 item id 不计入角标
+  const totalItems = cartItems.reduce((s, c) => s + c.quantity, 0);
 
   return { cartItems, addToCart, decreaseFromCart, removeFromCart, clearCart, getQuantity, isInCart, totalItems };
 }
