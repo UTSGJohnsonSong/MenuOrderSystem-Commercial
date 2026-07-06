@@ -11,7 +11,7 @@ interface Me {
 export default function OnboardingPage() {
   const router = useRouter();
   const [me, setMe] = useState<Me | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<"" | "code" | "text">("");
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -32,12 +32,19 @@ export default function OnboardingPage() {
 
   const inviteLink = `${window.location.origin}/join?code=${me.space.invite_code}`;
 
-  const copyInvite = () => {
+  const copyCode = () => {
+    navigator.clipboard.writeText(me.space!.invite_code).then(() => {
+      setCopied("code");
+      setTimeout(() => setCopied(""), 2200);
+    });
+  };
+
+  const copyText = () => {
     navigator.clipboard.writeText(
-      `来「${me.space!.name}」和我一起点菜吧！\n${inviteLink}\n邀请码：${me.space!.invite_code}`
+      `我建了一个我们的小厨房，以后想吃什么就来这里点～\n${inviteLink}\n邀请码：${me.space!.invite_code}`
     ).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setCopied("text");
+      setTimeout(() => setCopied(""), 2200);
     });
   };
 
@@ -53,7 +60,7 @@ export default function OnboardingPage() {
         你们的小厨房已经准备好啦
       </h1>
       <p style={{ color: "#9A7B5F", fontSize: "0.9375rem", marginTop: "10px", lineHeight: 1.6 }}>
-        我们帮你放好了一些家常菜谱，<br />现在可以邀请 TA 一起点菜。
+        我们帮你放好了一些家常菜谱，<br />现在把 TA 拉进来才好玩。
       </p>
 
       <div style={{
@@ -69,26 +76,44 @@ export default function OnboardingPage() {
         }}>
           {me.space.invite_code}
         </p>
-        <button onClick={copyInvite} style={{
-          marginTop: "16px", width: "100%", padding: "13px",
+        <button onClick={copyText} style={{
+          marginTop: "16px", width: "100%", padding: "14px",
           borderRadius: "14px", border: "none",
-          backgroundColor: copied ? "#FFE8CC" : "#FFF1DD",
-          color: "#C47A2C", fontSize: "0.875rem", fontWeight: 700, cursor: "pointer",
+          background: copied === "text"
+            ? "#FFE8CC"
+            : "linear-gradient(180deg, #F5B460 0%, #E8991E 100%)",
+          color: copied === "text" ? "#C47A2C" : "#FFFFFF",
+          fontSize: "0.9375rem", fontWeight: 700, cursor: "pointer",
+          boxShadow: copied === "text" ? "none" : "0 5px 16px rgba(232,153,30,0.35)",
         }}>
-          {copied ? "已复制，去微信发给 TA 吧 ✓" : "复制邀请链接"}
+          {copied === "text" ? "已复制，去微信发给 TA 吧 ✓" : "复制邀请文案，发给 TA"}
+        </button>
+        <button onClick={copyCode} style={{
+          marginTop: "10px", width: "100%", padding: "12px",
+          borderRadius: "14px", cursor: "pointer",
+          backgroundColor: copied === "code" ? "#FFE8CC" : "#FFFFFF",
+          color: "#C47A2C", fontSize: "0.8125rem", fontWeight: 600,
+          border: "1.5px solid rgba(240,210,170,0.7)",
+        }}>
+          {copied === "code" ? "邀请码已复制 ✓" : "只复制邀请码"}
         </button>
       </div>
 
       <button onClick={() => router.replace("/")} style={{
-        marginTop: "24px", padding: "16px", borderRadius: "18px", border: "none",
-        background: "linear-gradient(180deg, #F5B460 0%, #E8991E 100%)",
-        color: "#FFFFFF", fontSize: "1rem", fontWeight: 700, cursor: "pointer",
-        boxShadow: "0 6px 20px rgba(232,153,30,0.4)",
+        marginTop: "24px", padding: "16px", borderRadius: "18px",
+        backgroundColor: "#FFFFFF",
+        border: "1.5px solid rgba(240,210,170,0.7)",
+        color: "#C47A2C", fontSize: "0.9375rem", fontWeight: 700, cursor: "pointer",
       }}>
-        先去看看菜单
+        先去看看菜单 →
       </button>
-      <p style={{ color: "#C8A878", fontSize: "0.75rem", marginTop: "12px" }}>
+      <p style={{ color: "#C8A878", fontSize: "0.75rem", marginTop: "8px" }}>
         邀请码随时可以在「厨房 → 小厨房设置」里找到
+      </p>
+      <p style={{ marginTop: "18px" }}>
+        <a href="/install" style={{ color: "#C8A878", fontSize: "0.75rem", textDecoration: "underline" }}>
+          把小厨房放到手机桌面，下次点菜不用翻链接 →
+        </a>
       </p>
     </div>
   );

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-const PUBLIC_PATHS = ["/welcome", "/login", "/join", "/privacy", "/terms"];
+const PUBLIC_PATHS = ["/welcome", "/login", "/join", "/privacy", "/terms", "/install"];
 
 /*
  * 轻量守门：没有会话 cookie 的访客直接送去落地页。

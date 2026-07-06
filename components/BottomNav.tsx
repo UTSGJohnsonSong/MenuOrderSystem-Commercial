@@ -52,7 +52,7 @@ const tabs = [
 ];
 
 // 登录前的公开页面和沉浸式流程页不显示底部导航
-const HIDDEN_PATHS = ["/welcome", "/login", "/join", "/onboarding", "/privacy", "/terms"];
+const HIDDEN_PATHS = ["/welcome", "/login", "/join", "/onboarding", "/privacy", "/terms", "/admin", "/install"];
 
 export default function BottomNav() {
   const pathname = usePathname();

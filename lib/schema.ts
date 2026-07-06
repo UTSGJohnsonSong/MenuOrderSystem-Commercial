@@ -15,6 +15,23 @@ export async function ensureSchema() {
       created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
     )
   `;
+  // 埋点最小集（见 Obsidian《12 指标体系与埋点方案》）：
+  // source = 注册来源（xhs01/invite/…，注册那一刻写入，之后不改）
+  // last_active_at = 最近活跃（requireUser 里 12 小时节流更新，撑起留存/周活指标）
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT ''`;
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_active_at TIMESTAMPTZ`;
+
+  // 极简事件表：目前只记 welcome_view（落地页访问，转化漏斗的分母）。
+  // 不种 cookie、不记设备指纹。
+  await sql`
+    CREATE TABLE IF NOT EXISTS events (
+      id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      name       TEXT NOT NULL,
+      meta       TEXT NOT NULL DEFAULT '',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_events_name_time ON events(name, created_at DESC)`;
 
   await sql`
     CREATE TABLE IF NOT EXISTS spaces (
@@ -94,6 +111,16 @@ export async function ensureSchema() {
     )
   `;
   await sql`CREATE INDEX IF NOT EXISTS idx_menu_items_space ON menu_items(space_id)`;
+
+  // 菜品库配图：菜品数据本身是静态文件（lib/library.ts），图片由管理员在 /admin 里配置，
+  // 所有空间共享。用户从库里加菜时把 image_url 复制进自己的 menu_items。
+  await sql`
+    CREATE TABLE IF NOT EXISTS library_images (
+      dish_name  TEXT PRIMARY KEY,
+      image_url  TEXT NOT NULL,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `;
 
   await sql`
     CREATE TABLE IF NOT EXISTS meal_logs (

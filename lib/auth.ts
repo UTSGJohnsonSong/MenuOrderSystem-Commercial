@@ -56,18 +56,38 @@ export interface AuthUser {
 export async function getAuthUser(): Promise<AuthUser | null> {
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
   if (!token) return null;
-  const [row] = await sql<AuthUser>`
-    SELECT u.id, u.phone, u.nickname, u.active_space_id
+  const [row] = await sql<AuthUser & { last_active_at: string | null }>`
+    SELECT u.id, u.phone, u.nickname, u.active_space_id, u.last_active_at
     FROM sessions s
     JOIN users u ON u.id = s.user_id
     WHERE s.token_hash = ${hashToken(token)} AND s.expires_at > now()
   `;
-  return row ?? null;
+  if (!row) return null;
+
+  // 活跃埋点：12 小时节流，绝大多数请求不产生额外写；失败不影响业务
+  const stale = !row.last_active_at ||
+    Date.now() - new Date(row.last_active_at).getTime() > 12 * 3600 * 1000;
+  if (stale) {
+    sql`UPDATE users SET last_active_at = now() WHERE id = ${row.id}`.catch(() => {});
+  }
+  return { id: row.id, phone: row.phone, nickname: row.nickname, active_space_id: row.active_space_id };
 }
 
 export async function requireUser(): Promise<AuthUser> {
   const user = await getAuthUser();
   if (!user) throw new ApiError(401, "未登录");
+  return user;
+}
+
+/**
+ * 管理员校验：手机号在 ADMIN_PHONES 白名单（逗号分隔）内。
+ * 非管理员返回 404 而不是 403——不向普通用户暴露管理入口的存在。
+ */
+export async function requireAdmin(): Promise<AuthUser> {
+  const user = await requireUser();
+  const whitelist = (process.env.ADMIN_PHONES ?? "")
+    .split(",").map(s => s.trim()).filter(Boolean);
+  if (!whitelist.includes(user.phone)) throw new ApiError(404, "Not Found");
   return user;
 }
 

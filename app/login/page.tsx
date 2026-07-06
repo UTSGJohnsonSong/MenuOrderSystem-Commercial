@@ -55,9 +55,11 @@ function LoginForm() {
     setError("");
     setBusy(true);
     try {
+      // 注册来源：落地页 ?from= 参数由 SourceTracker 存进 sessionStorage，这里透传
+      const source = sessionStorage.getItem("fm-source") ?? "";
       const res = await fetch("/api/auth/verify", {
         method: "POST",
-        body: JSON.stringify({ phone, code, ...(inviteCode ? { inviteCode } : {}) }),
+        body: JSON.stringify({ phone, code, source, ...(inviteCode ? { inviteCode } : {}) }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "登录失败");

@@ -137,6 +137,26 @@ export default function ChufangPage() {
 
       {/* Entry grid */}
       <div style={{ padding: "0 16px 120px" }}>
+        {/* 菜品库入口：快速搭建菜单的主路径 */}
+        <button onClick={() => router.push("/chufang/library")} style={{
+          width: "100%", marginBottom: "12px", padding: "18px 16px",
+          borderRadius: "20px", border: "none", cursor: "pointer",
+          background: "linear-gradient(120deg, #F2A24A, #F7BD6E)",
+          boxShadow: "0 4px 14px rgba(242,162,74,0.35)",
+          display: "flex", alignItems: "center", gap: "14px", textAlign: "left",
+        }}>
+          <span style={{ fontSize: "1.75rem" }}>🍲</span>
+          <span style={{ flex: 1 }}>
+            <span style={{ display: "block", color: "#FFFFFF", fontSize: "0.9375rem", fontWeight: 700 }}>
+              菜品库
+            </span>
+            <span style={{ display: "block", color: "rgba(255,255,255,0.9)", fontSize: "0.75rem", marginTop: "2px" }}>
+              300 道家常菜，搜一搜直接加进菜单
+            </span>
+          </span>
+          <span style={{ color: "#FFFFFF", fontSize: "1.125rem" }}>→</span>
+        </button>
+
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
           <EntryCard
             label="添加菜谱"

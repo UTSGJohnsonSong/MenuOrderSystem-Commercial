@@ -12,8 +12,8 @@ interface UserRow {
 
 export async function POST(req: Request) {
   try {
-    const { phone, code, inviteCode } = (await req.json()) as {
-      phone?: string; code?: string; inviteCode?: string;
+    const { phone, code, inviteCode, source } = (await req.json()) as {
+      phone?: string; code?: string; inviteCode?: string; source?: string;
     };
     if (!phone || !isValidPhone(phone)) throw new ApiError(400, "请输入正确的手机号");
     if (!code || !/^\d{6}$/.test(code)) throw new ApiError(400, "请输入 6 位验证码");
@@ -32,12 +32,22 @@ export async function POST(req: Request) {
     }
     await sql`UPDATE sms_codes SET used = true WHERE id = ${record.id}`;
 
-    // 手机号首次登录即注册
-    const [user] = await sql<UserRow>`
+    // 手机号首次登录即注册。(xmax = 0) 判断这一行是不是刚 INSERT 的（老用户不覆盖来源）
+    const [user] = await sql<UserRow & { is_new: boolean }>`
       INSERT INTO users (phone) VALUES (${phone})
       ON CONFLICT (phone) DO UPDATE SET phone = EXCLUDED.phone
-      RETURNING id, phone, nickname, active_space_id
+      RETURNING id, phone, nickname, active_space_id, (xmax = 0) AS is_new
     `;
+
+    // 注册来源只在注册那一刻写一次：被邀请的记 invite，其余用落地页透传的 from 参数
+    if (user.is_new) {
+      const cleanSource = inviteCode
+        ? "invite"
+        : (source ?? "").slice(0, 32).replace(/[^\w-]/g, "");
+      if (cleanSource) {
+        await sql`UPDATE users SET source = ${cleanSource} WHERE id = ${user.id}`;
+      }
+    }
 
     let created = false;
     if (inviteCode) {

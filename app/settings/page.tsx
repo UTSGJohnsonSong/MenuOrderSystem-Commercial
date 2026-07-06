@@ -94,6 +94,40 @@ export default function SettingsPage() {
     router.replace("/welcome");
   };
 
+  const kickMember = async (m: Member) => {
+    const label = m.nickname || m.phone_masked;
+    if (!confirm(`把 ${label} 移出小厨房？\nTA 将看不到这里的菜单和食记。`)) return;
+    const res = await fetch("/api/space/kick", { method: "POST", body: JSON.stringify({ member_id: m.id }) });
+    const data = await res.json();
+    if (!res.ok) { showToast(data.error ?? "操作失败"); return; }
+    showToast(`已移出 ${label}`);
+    load();
+  };
+
+  const dissolveSpace = async () => {
+    if (!space) return;
+    const input = prompt(
+      `解散后，所有成员都会失去这个厨房的菜单和食记，无法恢复。\n\n请输入小厨房的名字「${space.name}」确认解散：`
+    );
+    if (input === null) return;
+    const res = await fetch("/api/space/dissolve", { method: "POST", body: JSON.stringify({ confirm_name: input }) });
+    const data = await res.json();
+    if (!res.ok) { showToast(data.error ?? "操作失败"); return; }
+    alert("小厨房已解散。我们为你准备了一个新的小厨房。");
+    router.replace("/");
+  };
+
+  const deleteAccount = async () => {
+    const input = prompt(
+      "注销后，你的账号和你作为主人的小厨房都会被删除，无法恢复。\n加入的其他厨房会自动退出。\n\n请输入「注销」两个字确认："
+    );
+    if (input === null) return;
+    const res = await fetch("/api/auth/delete-account", { method: "POST", body: JSON.stringify({ confirm: input }) });
+    const data = await res.json();
+    if (!res.ok) { showToast(data.error ?? "操作失败"); return; }
+    router.replace("/welcome");
+  };
+
   if (!space) return null;
 
   const navH = "calc(56px + env(safe-area-inset-bottom))";
@@ -179,12 +213,20 @@ export default function SettingsPage() {
               <span style={{ color: "#3A2A1A", fontSize: "0.9375rem", fontWeight: 600 }}>
                 {m.nickname || m.phone_masked}{m.is_me ? "（我）" : ""}
               </span>
-              <span style={{
-                fontSize: "0.6875rem", color: m.role === "owner" ? "#C47A2C" : "#B8A18D",
-                backgroundColor: m.role === "owner" ? "#FFF1DD" : "#F7F0E6",
-                padding: "2px 10px", borderRadius: "999px",
-              }}>
-                {m.role === "owner" ? "主人" : "成员"}
+              <span style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <span style={{
+                  fontSize: "0.6875rem", color: m.role === "owner" ? "#C47A2C" : "#B8A18D",
+                  backgroundColor: m.role === "owner" ? "#FFF1DD" : "#F7F0E6",
+                  padding: "2px 10px", borderRadius: "999px",
+                }}>
+                  {m.role === "owner" ? "主人" : "成员"}
+                </span>
+                {space.is_owner && !m.is_me && (
+                  <button onClick={() => kickMember(m)} style={{
+                    color: "#D9534F", fontSize: "0.75rem",
+                    border: "none", background: "none", cursor: "pointer",
+                  }}>移出</button>
+                )}
               </span>
             </div>
           ))}
@@ -192,7 +234,10 @@ export default function SettingsPage() {
 
         {/* 数据与隐私 */}
         <div style={cardStyle}>
-          <p style={{ color: "#9A7B5F", fontSize: "0.75rem", marginBottom: "10px" }}>数据与隐私</p>
+          <p style={{ color: "#9A7B5F", fontSize: "0.75rem", marginBottom: "10px" }}>更多</p>
+          <Link href="/install" style={{ display: "block", color: "#3A2A1A", fontSize: "0.875rem", padding: "6px 0", textDecoration: "none" }}>
+            把小厨房放到手机桌面 ›
+          </Link>
           <Link href="/privacy" style={{ display: "block", color: "#3A2A1A", fontSize: "0.875rem", padding: "6px 0", textDecoration: "none" }}>
             隐私政策 ›
           </Link>
@@ -215,11 +260,32 @@ export default function SettingsPage() {
         <button onClick={logout} style={{
           padding: "14px", borderRadius: "16px",
           border: "1.5px solid rgba(240,210,170,0.6)",
-          backgroundColor: "#FFFFFF", color: "#D9534F",
+          backgroundColor: "#FFFFFF", color: "#B08A68",
           fontSize: "0.875rem", fontWeight: 600, cursor: "pointer",
         }}>
           退出登录
         </button>
+
+        {/* 危险操作：低调收在最底部，红色文字链而非大按钮 */}
+        <div style={{ ...cardStyle, borderColor: "rgba(217,83,79,0.25)" }}>
+          <p style={{ color: "#9A7B5F", fontSize: "0.75rem", marginBottom: "6px" }}>危险操作</p>
+          {space.is_owner && (
+            <button onClick={dissolveSpace} style={{
+              display: "block", padding: "8px 0", width: "100%", textAlign: "left",
+              color: "#D9534F", fontSize: "0.875rem",
+              border: "none", background: "none", cursor: "pointer",
+            }}>
+              解散这个小厨房 ›
+            </button>
+          )}
+          <button onClick={deleteAccount} style={{
+            display: "block", padding: "8px 0", width: "100%", textAlign: "left",
+            color: "#D9534F", fontSize: "0.875rem",
+            border: "none", background: "none", cursor: "pointer",
+          }}>
+            注销账号 ›
+          </button>
+        </div>
       </div>
 
       {toast && (

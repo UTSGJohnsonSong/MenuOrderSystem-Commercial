@@ -1,5 +1,5 @@
 import { randomInt, randomUUID } from "crypto";
-import { Sql, withTransaction } from "./db";
+import { sql as poolSql, Sql, withTransaction } from "./db";
 import { ApiError } from "./auth";
 import { DEFAULT_CATEGORIES, DEFAULT_ITEMS } from "./data";
 
@@ -49,6 +49,35 @@ export async function createSpaceForUser(userId: string, name = "我们的小厨
     await seedSpace(sql, space.id, userId);
     return space;
   });
+}
+
+/**
+ * 把用户的 active_space_id 指向 TA 最近加入的、未删除的空间（没有则置空）。
+ * 在事务里调用：先删成员行/软删空间，再调这个，JOIN 会自然排除刚失效的空间。
+ */
+export async function repointActiveSpace(sql: Sql, userId: string) {
+  const [other] = await sql<{ space_id: string }>`
+    SELECT m.space_id FROM space_members m
+    JOIN spaces s ON s.id = m.space_id AND s.deleted_at IS NULL
+    WHERE m.user_id = ${userId}
+    ORDER BY m.joined_at DESC
+    LIMIT 1
+  `;
+  await sql`UPDATE users SET active_space_id = ${other?.space_id ?? null} WHERE id = ${userId}`;
+}
+
+/**
+ * 兜底：用户一个空间都没有时自动新建（整个应用假设"活跃用户永远有空间"）。
+ * createSpaceForUser 自带事务，必须在别的事务提交之后调用。
+ */
+export async function ensureUserHasSpace(userId: string) {
+  const [row] = await poolSql`
+    SELECT 1 AS ok FROM space_members m
+    JOIN spaces s ON s.id = m.space_id AND s.deleted_at IS NULL
+    WHERE m.user_id = ${userId}
+    LIMIT 1
+  `;
+  if (!row) await createSpaceForUser(userId);
 }
 
 /** 通过邀请码加入空间（校验成员上限，加行锁防并发挤爆） */

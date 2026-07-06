@@ -1,4 +1,5 @@
 import Link from "next/link";
+import SourceTracker from "@/components/SourceTracker";
 
 /*
  * 未登录访客的落地页。
@@ -14,6 +15,7 @@ export default function WelcomePage() {
       background: "linear-gradient(180deg, #FFFDF8 0%, #FFF3E0 100%)",
       padding: "0 28px",
     }}>
+      <SourceTracker />
       <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", paddingTop: "48px" }}>
         <div style={{ fontSize: "3.5rem", marginBottom: "18px" }}>🍲</div>
         <h1 style={{ color: "#3A2A1A", fontSize: "1.75rem", fontWeight: 800, lineHeight: 1.3 }}>
@@ -66,6 +68,8 @@ export default function WelcomePage() {
           <Link href="/terms" style={{ color: "#C8A878" }}>用户协议</Link>
           {" · "}
           <Link href="/privacy" style={{ color: "#C8A878" }}>隐私政策</Link>
+          {" · "}
+          <Link href="/install" style={{ color: "#C8A878" }}>放到手机桌面</Link>
         </p>
         {icp && (
           <p style={{ fontSize: "0.6875rem", color: "#D6BC9C", marginTop: "6px" }}>

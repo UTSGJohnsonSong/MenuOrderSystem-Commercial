@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useStore, useCart, saveMealLog } from "@/lib/store";
 import { MenuItem, Category, MealLog } from "@/lib/types";
 import ItemDetailModal from "@/components/ItemDetailModal";
@@ -331,8 +332,113 @@ function SendModal({ cartItems, categories, onClose, onDone, onSave, onIncrease,
   );
 }
 
+/* ─── 「随便吃什么」随机选菜 Modal ─── */
+function RandomModal({ item, category, poolSize, onAgain, onAccept, onClose, onGoLibrary, onGoKitchen }: {
+  item: MenuItem | null;
+  category: Category | undefined;
+  poolSize: number;
+  onAgain: () => void;
+  onAccept: () => void;
+  onClose: () => void;
+  onGoLibrary: () => void;
+  onGoKitchen: () => void;
+}) {
+  return (
+    <div onClick={onClose} style={{
+      position: "fixed", inset: 0, zIndex: 60,
+      display: "flex", alignItems: "center", justifyContent: "center",
+      backgroundColor: "rgba(45,31,20,0.5)", padding: "0 28px",
+    }}>
+      <div onClick={e => e.stopPropagation()} style={{
+        width: "100%", maxWidth: "360px",
+        background: "linear-gradient(180deg, #FFFDF8 0%, #FFF7EA 100%)",
+        borderRadius: "26px", overflow: "hidden", textAlign: "center",
+      }}>
+        {item ? (
+          <>
+            <div style={{ height: "170px" }}>
+              {item.image_url ? (
+                <img src={item.image_url} alt={item.name} style={{
+                  width: "100%", height: "100%", objectFit: "cover", display: "block",
+                }} />
+              ) : (
+                <div style={{
+                  width: "100%", height: "100%",
+                  background: "linear-gradient(135deg, #FFF3E4, #FFE8CC)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: "3.5rem",
+                }}>{CAT_ICONS[item.category_id] ?? "🍽️"}</div>
+              )}
+            </div>
+            <div style={{ padding: "18px 20px 22px" }}>
+              <p style={{ color: "#B08A68", fontSize: "0.75rem" }}>今天就吃——</p>
+              <h2 style={{ color: "#3A2A1A", fontSize: "1.375rem", fontWeight: 800, marginTop: "4px" }}>
+                {item.name}
+              </h2>
+              {category && (
+                <p style={{ color: "#B08A68", fontSize: "0.75rem", marginTop: "4px" }}>
+                  {CAT_ICONS[category.id] ?? "🍽️"} {category.name}
+                  {shortIngredients(item.ingredients) ? ` · ${shortIngredients(item.ingredients)}` : ""}
+                </p>
+              )}
+              <button onClick={onAccept} style={{
+                marginTop: "18px", width: "100%", padding: "14px",
+                borderRadius: "16px", border: "none", cursor: "pointer",
+                background: "linear-gradient(180deg, #F5B460 0%, #E8991E 100%)",
+                color: "#FFFFFF", fontSize: "0.9375rem", fontWeight: 700,
+                boxShadow: "0 5px 16px rgba(232,153,30,0.38)",
+              }}>
+                就它了，加入今日菜单
+              </button>
+              {poolSize > 1 && (
+                <button onClick={onAgain} style={{
+                  marginTop: "10px", width: "100%", padding: "12px",
+                  borderRadius: "16px", cursor: "pointer",
+                  backgroundColor: "#FFFFFF", color: "#C47A2C",
+                  fontSize: "0.875rem", fontWeight: 600,
+                  border: "1.5px solid rgba(240,210,170,0.7)",
+                }}>
+                  🎲 再摇一次
+                </button>
+              )}
+            </div>
+          </>
+        ) : (
+          <div style={{ padding: "32px 24px 26px" }}>
+            <p style={{ fontSize: "2.5rem" }}>🍳</p>
+            <h2 style={{ color: "#3A2A1A", fontSize: "1.0625rem", fontWeight: 800, marginTop: "10px", lineHeight: 1.5 }}>
+              小厨房还空着
+            </h2>
+            <p style={{ color: "#9A7B5F", fontSize: "0.8125rem", marginTop: "6px", lineHeight: 1.6 }}>
+              先加几道 TA 会做的菜，<br />下次就能帮你们选啦
+            </p>
+            <button onClick={onGoLibrary} style={{
+              marginTop: "18px", width: "100%", padding: "13px",
+              borderRadius: "16px", border: "none", cursor: "pointer",
+              background: "linear-gradient(180deg, #F5B460 0%, #E8991E 100%)",
+              color: "#FFFFFF", fontSize: "0.875rem", fontWeight: 700,
+            }}>
+              去菜品库挑几道
+            </button>
+            <button onClick={onGoKitchen} style={{
+              marginTop: "10px", width: "100%", padding: "12px",
+              borderRadius: "16px", cursor: "pointer",
+              backgroundColor: "#FFFFFF", color: "#C47A2C",
+              fontSize: "0.875rem", fontWeight: 600,
+              border: "1.5px solid rgba(240,210,170,0.7)",
+            }}>
+              自己动手添加
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ─── Main 点菜 Page ─── */
 export default function OrderPage() {
+  const router = useRouter();
   const { categories, items, addItem, updateItem, deleteItem } = useStore();
   const { cartItems, addToCart, decreaseFromCart, clearCart, getQuantity, totalItems } = useCart(items, categories);
 
@@ -341,6 +447,22 @@ export default function OrderPage() {
   const [showSendModal, setShowSendModal] = useState(false);
   const [formItem, setFormItem] = useState<MenuItem | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [showRandom, setShowRandom] = useState(false);
+  const [randomItem, setRandomItem] = useState<MenuItem | null>(null);
+
+  // 随机池：当前小厨房里所有可点的菜（useStore 的数据本身就只含本空间，归档的菜接口层已排除）
+  const randomPool = useMemo(() => items.filter(i => i.is_active), [items]);
+
+  const rollRandom = () => {
+    if (randomPool.length === 0) { setRandomItem(null); return; }
+    // 连摇不出重复的（只有一道菜时除外）
+    const candidates = randomPool.length > 1 && randomItem
+      ? randomPool.filter(i => i.id !== randomItem.id)
+      : randomPool;
+    setRandomItem(candidates[Math.floor(Math.random() * candidates.length)]);
+  };
+
+  const openRandom = () => { setRandomItem(null); setShowRandom(true); rollRandom(); };
 
   const sortedCats = useMemo(
     () => [...categories].sort((a, b) => a.sort_order - b.sort_order),
@@ -406,9 +528,29 @@ export default function OrderPage() {
             paddingBottom: totalItems > 0 ? "100px" : "28px",
           }}>
             {visibleItems.length === 0 ? (
-              <div style={{ padding: "50px 16px", textAlign: "center" }}>
-                <p style={{ color: "#B08A68", fontSize: "0.875rem" }}>这个分类还没有菜品</p>
-              </div>
+              items.length === 0 && categories.length > 0 ? (
+                // 整个小厨房都空着（比如把模板菜删光了）：给出明确出路
+                <div style={{ padding: "40px 16px", textAlign: "center" }}>
+                  <p style={{ fontSize: "2rem" }}>🍳</p>
+                  <p style={{ color: "#3A2A1A", fontSize: "0.9375rem", fontWeight: 700, marginTop: "10px" }}>
+                    小厨房还空着
+                  </p>
+                  <p style={{ color: "#9A7B5F", fontSize: "0.8125rem", marginTop: "6px", lineHeight: 1.6 }}>
+                    先加几道 TA 会做的菜吧
+                  </p>
+                  <button onClick={() => router.push("/chufang/library")} style={{
+                    marginTop: "16px", padding: "12px 28px", borderRadius: "999px", border: "none",
+                    background: "linear-gradient(180deg, #F5B460 0%, #E8991E 100%)",
+                    color: "#FFFFFF", fontSize: "0.875rem", fontWeight: 700, cursor: "pointer",
+                  }}>
+                    去菜品库挑几道
+                  </button>
+                </div>
+              ) : (
+                <div style={{ padding: "50px 16px", textAlign: "center" }}>
+                  <p style={{ color: "#B08A68", fontSize: "0.875rem" }}>这个分类还空着</p>
+                </div>
+              )
             ) : (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
                 {visibleItems.map(item => {
@@ -431,6 +573,26 @@ export default function OrderPage() {
           </div>
         </div>
       </div>
+
+      {/* ── 「随便吃什么」floating button ── */}
+      <button
+        onClick={openRandom}
+        style={{
+          position: "fixed",
+          bottom: `calc(${navH} + 22px)`,
+          left: "16px",
+          zIndex: 40,
+          padding: "12px 18px",
+          borderRadius: "999px",
+          border: "none", cursor: "pointer",
+          background: "linear-gradient(180deg, #FFFDF8 0%, #FFF1DD 100%)",
+          color: "#C47A2C", fontSize: "0.875rem", fontWeight: 700,
+          display: "flex", alignItems: "center", gap: "6px",
+          boxShadow: "0 6px 18px rgba(166,112,58,0.28)",
+        }}
+      >
+        <span style={{ fontSize: "1.05rem" }}>🎲</span> 随便吃什么
+      </button>
 
       {/* ── Floating cart button ── */}
       {totalItems > 0 && (
@@ -502,6 +664,23 @@ export default function OrderPage() {
             setShowForm(false); setFormItem(null);
           }}
           onCancel={() => { setShowForm(false); setFormItem(null); }}
+        />
+      )}
+
+      {showRandom && (
+        <RandomModal
+          item={randomItem}
+          category={categories.find(c => c.id === randomItem?.category_id)}
+          poolSize={randomPool.length}
+          onAgain={rollRandom}
+          onAccept={() => {
+            const cat = categories.find(c => c.id === randomItem?.category_id);
+            if (randomItem && cat) addToCart(randomItem, cat);
+            setShowRandom(false);
+          }}
+          onClose={() => setShowRandom(false)}
+          onGoLibrary={() => router.push("/chufang/library")}
+          onGoKitchen={() => router.push("/chufang")}
         />
       )}
     </div>

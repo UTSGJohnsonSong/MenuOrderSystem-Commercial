@@ -6,7 +6,7 @@ import { handleApiError, ApiError } from "@/lib/auth";
 export async function GET(req: Request) {
   try {
     const code = new URL(req.url).searchParams.get("code")?.trim().toUpperCase();
-    if (!code || !/^[0-9A-Z]{6}$/.test(code)) throw new ApiError(400, "邀请码格式不对");
+    if (!code || !/^[0-9A-Z]{6}$/.test(code)) throw new ApiError(400, "邀请码好像不太对，检查一下再试试？");
 
     const [space] = await sql<{ name: string; member_limit: number; member_count: string }>`
       SELECT s.name, s.member_limit,
@@ -14,7 +14,7 @@ export async function GET(req: Request) {
       FROM spaces s
       WHERE s.invite_code = ${code} AND s.deleted_at IS NULL
     `;
-    if (!space) throw new ApiError(404, "邀请码不存在或已被重置");
+    if (!space) throw new ApiError(404, "这个邀请码好像过期啦，问问小厨房主人要一个新的吧");
 
     return NextResponse.json({
       name: space.name,
