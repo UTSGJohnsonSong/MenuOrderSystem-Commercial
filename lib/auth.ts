@@ -1,4 +1,4 @@
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { createHash, randomBytes } from "crypto";
 import { NextResponse } from "next/server";
 import { sql } from "./db";
@@ -28,9 +28,14 @@ export async function createSession(userId: string): Promise<string> {
 }
 
 export async function setSessionCookie(token: string) {
+  // Secure 标记按实际协议判断，而不是按 NODE_ENV：
+  // 备案期内测走 HTTP（IP:3000），带 Secure 会导致浏览器丢弃 cookie、永远登录不上；
+  // 上线后 Nginx 转发 https（x-forwarded-proto=https）时自动恢复 Secure。
+  const h = await headers();
+  const proto = h.get("x-forwarded-proto") ?? "http";
   (await cookies()).set(SESSION_COOKIE, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: proto === "https",
     sameSite: "lax",
     path: "/",
     maxAge: SESSION_DAYS * 24 * 3600,
