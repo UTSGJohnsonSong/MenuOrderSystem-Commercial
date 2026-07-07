@@ -46,3 +46,6 @@ next-env.d.ts
 
 # 本地图片上传目录（生产在 Docker 卷里）
 /uploads
+
+# 生图源文件（本地保留，不入库）
+pictures/

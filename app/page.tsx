@@ -9,6 +9,7 @@ import { MEALS, guessMeal } from "@/lib/meals";
 import { compressImage } from "@/lib/image";
 import { uploadImage } from "@/lib/store";
 import ItemDetailModal from "@/components/ItemDetailModal";
+import CatIcon from "@/components/CatIcon";
 import ItemForm from "@/components/ItemForm";
 
 function greeting(): string {
@@ -22,12 +23,7 @@ function greeting(): string {
 
 interface SpaceLite { name: string; cover_preset: string; cover_image_url: string | null }
 
-/* ─── icons & helpers ─── */
-const CAT_ICONS: Record<string, string> = {
-  zaochan: "🍳", zhushi: "🍚", mianshi: "🍜",
-  rourou:  "🥩", caicai: "🥦", shuiguo: "🍓",
-  tianpin: "🍮", yao:    "💊",
-};
+/* ─── helpers ─── */
 
 function shortIngredients(raw: string): string {
   if (!raw) return "";
@@ -60,8 +56,8 @@ function Sidebar({ categories, activeId, onChange }: {
             transition: "all 0.18s",
             cursor: "pointer",
           }}>
-            <div style={{ fontSize: "1.25rem", marginBottom: "3px", lineHeight: 1 }}>
-              {CAT_ICONS[cat.id] ?? "🍽️"}
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: "4px" }}>
+              <CatIcon id={cat.id} size={28} />
             </div>
             <div style={{ fontSize: "0.625rem", fontWeight: active ? 700 : 400, lineHeight: 1.3 }}>
               {cat.name}
@@ -80,7 +76,6 @@ function FoodCard({ item, categoryId, quantity, onIncrease, onDecrease, onClick 
 }) {
   const [imgErr, setImgErr] = useState(false);
   const showImg = !!item.image_url && !imgErr;
-  const placeholderEmoji = CAT_ICONS[categoryId] ?? "🍽️";
   const ingShort = shortIngredients(item.ingredients);
 
   return (
@@ -103,7 +98,7 @@ function FoodCard({ item, categoryId, quantity, onIncrease, onDecrease, onClick 
             display: "flex", flexDirection: "column",
             alignItems: "center", justifyContent: "center", gap: "6px",
           }}>
-            <span style={{ fontSize: "2.25rem" }}>{placeholderEmoji}</span>
+            <CatIcon id={categoryId} size={44} />
             <span style={{ fontSize: "0.5625rem", color: "#C99558", letterSpacing: "0.04em" }}>
               图片待添加
             </span>
@@ -265,8 +260,11 @@ function SendModal({ cartItems, categories, onClose, onDone, onSave, onIncrease,
         <div style={{ padding: "16px 20px" }}>
           {grouped.map(({ category, items }) => (
             <div key={category.id} style={{ marginBottom: "12px" }}>
-              <p style={{ color: "#B08A68", fontSize: "0.75rem", fontWeight: 700, marginBottom: "6px" }}>
-                {CAT_ICONS[category.id] ?? "🍽️"} {category.name}
+              <p style={{
+                color: "#B08A68", fontSize: "0.75rem", fontWeight: 700, marginBottom: "6px",
+                display: "flex", alignItems: "center", gap: "6px",
+              }}>
+                <CatIcon id={category.id} size={18} /> {category.name}
               </p>
               {items.map(ci => (
                 <div key={ci.item.id} style={{
@@ -286,8 +284,7 @@ function SendModal({ cartItems, categories, onClose, onDone, onSave, onIncrease,
                       width: "42px", height: "42px", borderRadius: "11px", flexShrink: 0,
                       background: "linear-gradient(135deg, #FFF3E4, #FFE8CC)",
                       display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: "1.1rem",
-                    }}>{CAT_ICONS[ci.item.category_id] ?? "🍽️"}</div>
+                    }}><CatIcon id={ci.item.category_id} size={26} /></div>
                   )}
                   <span style={{ flex: 1, color: "#3C2415", fontSize: "0.875rem", fontWeight: 700 }}>
                     {ci.item.name}
@@ -537,8 +534,7 @@ function RandomModal({ item, category, poolSize, onAgain, onAccept, onClose, onG
                   width: "100%", height: "100%",
                   background: "linear-gradient(135deg, #FFF3E4, #FFE8CC)",
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: "3.5rem",
-                }}>{CAT_ICONS[item.category_id] ?? "🍽️"}</div>
+                }}><CatIcon id={item.category_id} size={72} /></div>
               )}
             </div>
             <div style={{ padding: "18px 20px 22px" }}>
@@ -547,8 +543,11 @@ function RandomModal({ item, category, poolSize, onAgain, onAccept, onClose, onG
                 {item.name}
               </h2>
               {category && (
-                <p style={{ color: "#B08A68", fontSize: "0.75rem", marginTop: "4px" }}>
-                  {CAT_ICONS[category.id] ?? "🍽️"} {category.name}
+                <p style={{
+                  color: "#B08A68", fontSize: "0.75rem", marginTop: "4px",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: "5px",
+                }}>
+                  <CatIcon id={category.id} size={16} /> {category.name}
                   {shortIngredients(item.ingredients) ? ` · ${shortIngredients(item.ingredients)}` : ""}
                 </p>
               )}
@@ -828,8 +827,11 @@ export default function OrderPage() {
         <div style={{ flex: 1, overflowY: "auto" }}>
           {/* Section title */}
           <div style={{ padding: "16px 16px 10px" }}>
-            <p style={{ color: "#4A2E1F", fontSize: "1.0625rem", fontWeight: 800, lineHeight: 1.2 }}>
-              {CAT_ICONS[activeCat?.id ?? ""] ?? "🍽️"} {activeCat?.name}
+            <p style={{
+              color: "#4A2E1F", fontSize: "1.0625rem", fontWeight: 800, lineHeight: 1.2,
+              display: "flex", alignItems: "center", gap: "8px",
+            }}>
+              <CatIcon id={activeCat?.id} size={24} /> {activeCat?.name}
             </p>
           </div>
 

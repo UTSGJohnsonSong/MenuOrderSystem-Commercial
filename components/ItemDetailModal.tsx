@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { MenuItem, Category } from "@/lib/types";
+import CatIcon from "@/components/CatIcon";
 
 interface Props {
   item: MenuItem | null;
@@ -56,16 +57,7 @@ export default function ItemDetailModal({
               display: "flex", flexDirection: "column",
               alignItems: "center", justifyContent: "center", gap: "8px",
             }}>
-              <span style={{ fontSize: "3rem" }}>
-                {category?.id === "zaochan" ? "🍳" :
-                 category?.id === "zhushi"  ? "🍚" :
-                 category?.id === "mianshi" ? "🍜" :
-                 category?.id === "rourou"  ? "🥩" :
-                 category?.id === "caicai"  ? "🥦" :
-                 category?.id === "shuiguo" ? "🍓" :
-                 category?.id === "tianpin" ? "🍮" :
-                 category?.id === "yao"     ? "💊" : "🍽️"}
-              </span>
+              <CatIcon id={category?.id} size={72} />
               <span style={{ color: "#C99558", fontSize: "0.75rem" }}>{item.name}</span>
             </div>
           ) : (

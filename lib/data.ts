@@ -1,14 +1,16 @@
 import { Category, MenuItem } from "./types";
 
+// 新空间默认开启的 8 个分类；完整预置库见 lib/categories.ts（用户可在设置里增减）
+// sort_order 与预置库一致（×10 间隔），后开启的类目能插进合理位置
 export const DEFAULT_CATEGORIES: Category[] = [
-  { id: "zaochan", name: "早餐", sort_order: 1 },
-  { id: "zhushi", name: "米饭", sort_order: 2 },
-  { id: "mianshi", name: "面面", sort_order: 3 },
-  { id: "rourou", name: "肉肉", sort_order: 4 },
-  { id: "caicai", name: "菜菜", sort_order: 5 },
-  { id: "shuiguo", name: "果果", sort_order: 6 },
-  { id: "tianpin", name: "甜甜", sort_order: 7 },
-  { id: "yao", name: "小药", sort_order: 8 },
+  { id: "zaochan", name: "早餐", sort_order: 10 },
+  { id: "zhushi", name: "米饭", sort_order: 20 },
+  { id: "mianshi", name: "面面", sort_order: 30 },
+  { id: "rourou", name: "肉肉", sort_order: 40 },
+  { id: "caicai", name: "菜菜", sort_order: 50 },
+  { id: "shuiguo", name: "果果", sort_order: 90 },
+  { id: "tianpin", name: "甜甜", sort_order: 100 },
+  { id: "yao", name: "小药", sort_order: 130 },
 ];
 
 export const DEFAULT_ITEMS: MenuItem[] = [

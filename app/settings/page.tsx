@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { PRESET_CATEGORIES } from "@/lib/categories";
+import CatIcon from "@/components/CatIcon";
 
 interface Member {
   id: string;
@@ -30,6 +32,8 @@ const cardStyle: React.CSSProperties = {
 export default function SettingsPage() {
   const router = useRouter();
   const [space, setSpace] = useState<SpaceDetail | null>(null);
+  const [enabledCats, setEnabledCats] = useState<Set<string>>(new Set());
+  const [catBusy, setCatBusy] = useState("");
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
   const [copied, setCopied] = useState(false);
@@ -45,7 +49,32 @@ export default function SettingsPage() {
     }).catch(() => {});
   }, [router]);
 
-  useEffect(() => { load(); }, [load]);
+  const loadCats = useCallback(() => {
+    fetch("/api/categories").then(r => r.json()).then((rows: { id: string }[]) => {
+      setEnabledCats(new Set(rows.map(r => r.id)));
+    }).catch(() => {});
+  }, []);
+
+  useEffect(() => { load(); loadCats(); }, [load, loadCats]);
+
+  const toggleCat = async (id: string, enabled: boolean) => {
+    if (catBusy) return;
+    setCatBusy(id);
+    try {
+      const res = await fetch("/api/categories", { method: "PUT", body: JSON.stringify({ id, enabled }) });
+      const data = await res.json();
+      if (!res.ok) { showToast(data.error ?? "操作失败"); return; }
+      setEnabledCats(prev => {
+        const next = new Set(prev);
+        if (enabled) next.add(id); else next.delete(id);
+        return next;
+      });
+    } catch {
+      showToast("网络开小差了，等会儿再试试～");
+    } finally {
+      setCatBusy("");
+    }
+  };
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -230,6 +259,43 @@ export default function SettingsPage() {
               </span>
             </div>
           ))}
+        </div>
+
+        {/* 菜品分类（预置库勾选，全员可改） */}
+        <div style={cardStyle}>
+          <p style={{ color: "#9A7B5F", fontSize: "0.75rem", marginBottom: "4px" }}>菜品分类</p>
+          <p style={{ color: "#C8A878", fontSize: "0.6875rem", marginBottom: "12px" }}>
+            挑你们用得上的（分类里还有菜时不能关闭）
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+            {PRESET_CATEGORIES.map(c => {
+              const on = enabledCats.has(c.id);
+              return (
+                <button
+                  key={c.id}
+                  disabled={catBusy === c.id}
+                  onClick={() => toggleCat(c.id, !on)}
+                  style={{
+                    display: "flex", alignItems: "center", gap: "8px",
+                    padding: "9px 12px", borderRadius: "14px",
+                    backgroundColor: on ? "#FFF1DD" : "#FAF5EC",
+                    border: `1.5px solid ${on ? "#F2A24A" : "rgba(240,216,180,0.5)"}`,
+                    opacity: catBusy === c.id ? 0.5 : 1,
+                    cursor: "pointer", textAlign: "left",
+                  }}
+                >
+                  <CatIcon id={c.id} size={26} />
+                  <span style={{
+                    flex: 1, fontSize: "0.8125rem", fontWeight: on ? 700 : 500,
+                    color: on ? "#3A2A1A" : "#B8A18D",
+                  }}>{c.name}</span>
+                  <span style={{ fontSize: "0.8125rem", color: on ? "#E8991E" : "#D9CBB8", fontWeight: 700 }}>
+                    {on ? "✓" : "＋"}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* 数据与隐私 */}
