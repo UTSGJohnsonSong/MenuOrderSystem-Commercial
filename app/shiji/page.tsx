@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useMealLog } from "@/lib/store";
 import { MealLog } from "@/lib/types";
+import { mealInfo, mealOrder } from "@/lib/meals";
 
 function formatDate(dateStr: string) {
   const d = new Date(dateStr + "T00:00:00");
@@ -87,9 +88,20 @@ function LogCard({ log, onDelete }: { log: MealLog; onDelete: () => void }) {
             </span>
           </div>
           <div>
-            <p style={{ color: "#3A2A1A", fontSize: "0.875rem", fontWeight: 600 }}>
-              {today ? "今天" : full}
-            </p>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <p style={{ color: "#3A2A1A", fontSize: "0.875rem", fontWeight: 600 }}>
+                {today ? "今天" : full}
+              </p>
+              {log.meal !== "all" && (
+                <span style={{
+                  backgroundColor: "#FFF1DD", color: "#C47A2C",
+                  fontSize: "0.6875rem", fontWeight: 700,
+                  padding: "2px 9px", borderRadius: "999px", flexShrink: 0,
+                }}>
+                  {mealInfo(log.meal).emoji} {mealInfo(log.meal).label}
+                </span>
+              )}
+            </div>
             <p style={{ color: "#9A7B5F", fontSize: "0.75rem" }}>
               共 {log.items.reduce((s, i) => s + i.quantity, 0)} 道菜
             </p>
@@ -131,9 +143,16 @@ function monthLabel(key: string) {
 export default function ShijiPage() {
   const { logs, deleteLog } = useMealLog();
 
-  const sorted = [...logs].sort((a, b) => b.date.localeCompare(a.date));
   const today = new Date().toISOString().split("T")[0];
   const hasToday = logs.some(l => l.date === today);
+
+  // 未来的备餐计划置顶（按日期升序，同日按早→午→晚）；过去和今天按月倒序
+  const upcoming = logs
+    .filter(l => l.date > today)
+    .sort((a, b) => a.date.localeCompare(b.date) || mealOrder(a.meal) - mealOrder(b.meal));
+  const sorted = logs
+    .filter(l => l.date <= today)
+    .sort((a, b) => b.date.localeCompare(a.date) || mealOrder(a.meal) - mealOrder(b.meal));
 
   // Group by month
   const grouped: { key: string; logs: typeof sorted }[] = [];
@@ -167,7 +186,7 @@ export default function ShijiPage() {
       </div>
 
       <div style={{ padding: "0 16px 120px" }}>
-        {sorted.length === 0 ? (
+        {sorted.length === 0 && upcoming.length === 0 ? (
           <div style={{
             paddingTop: "60px", textAlign: "center",
             display: "flex", flexDirection: "column", alignItems: "center", gap: "8px",
@@ -185,6 +204,20 @@ export default function ShijiPage() {
           </div>
         ) : (
           <>
+            {/* 备餐计划：还没到的日子 */}
+            {upcoming.length > 0 && (
+              <div style={{ marginBottom: "16px" }}>
+                <p style={{
+                  color: "#C47A2C", fontSize: "0.75rem", fontWeight: 700,
+                  letterSpacing: "0.04em", padding: "4px 4px 8px",
+                }}>
+                  🗓 接下来的安排
+                </p>
+                {upcoming.map(log => (
+                  <LogCard key={log.id} log={log} onDelete={() => deleteLog(log.id)} />
+                ))}
+              </div>
+            )}
             {!hasToday && (
               <div style={{
                 backgroundColor: "#FFF1DD", borderRadius: "16px",

@@ -132,10 +132,15 @@ export async function ensureSchema() {
       id         TEXT PRIMARY KEY,
       space_id   UUID NOT NULL REFERENCES spaces(id) ON DELETE CASCADE,
       date       TEXT NOT NULL,
+      meal       TEXT NOT NULL DEFAULT 'all',
       items      JSONB NOT NULL,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-      UNIQUE (space_id, date)
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     )
   `;
   await sql`CREATE INDEX IF NOT EXISTS idx_meal_logs_space ON meal_logs(space_id, date DESC)`;
+  // 迁移：食记从「每天一条」升级为「每天每餐一条」（备餐功能）。
+  // 老数据 meal 默认 'all'（全天）；唯一性用索引实现（幂等，且 ON CONFLICT 可用）
+  await sql`ALTER TABLE meal_logs ADD COLUMN IF NOT EXISTS meal TEXT NOT NULL DEFAULT 'all'`;
+  await sql`ALTER TABLE meal_logs DROP CONSTRAINT IF EXISTS meal_logs_space_id_date_key`;
+  await sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_meal_logs_space_date_meal ON meal_logs(space_id, date, meal)`;
 }

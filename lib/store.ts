@@ -187,8 +187,11 @@ export function useMealLog() {
   const saveLog = async (log: MealLog) => {
     const saved = await saveMealLog(log);
     setLogs(prev => {
-      const exists = prev.some(l => l.date === saved.date);
-      return exists ? prev.map(l => l.date === saved.date ? saved : l) : [saved, ...prev];
+      // 覆盖粒度与服务端一致：同一天同一餐
+      const exists = prev.some(l => l.date === saved.date && l.meal === saved.meal);
+      return exists
+        ? prev.map(l => l.date === saved.date && l.meal === saved.meal ? saved : l)
+        : [saved, ...prev];
     });
   };
 

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useStore, useCart, saveMealLog } from "@/lib/store";
 import { MenuItem, Category, MealLog } from "@/lib/types";
 import { COVER_PRESETS, getCover } from "@/lib/covers";
+import { MEALS, guessMeal } from "@/lib/meals";
 import { compressImage } from "@/lib/image";
 import { uploadImage } from "@/lib/store";
 import ItemDetailModal from "@/components/ItemDetailModal";
@@ -183,6 +184,18 @@ function SendModal({ cartItems, categories, onClose, onDone, onSave, onIncrease,
 }) {
   const [copied, setCopied] = useState(false);
   const [saved, setSaved] = useState(false);
+  // 备餐：可以选日期（默认今天）和餐次（按当前时间猜默认）
+  const [meal, setMeal] = useState(guessMeal());
+  const [dateChoice, setDateChoice] = useState<"today" | "tomorrow" | "custom">("today");
+  const [customDate, setCustomDate] = useState("");
+
+  const dateFor = (offset: number) => {
+    const d = new Date();
+    d.setDate(d.getDate() + offset);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+  const chosenDate = dateChoice === "today" ? dateFor(0) : dateChoice === "tomorrow" ? dateFor(1) : customDate;
+  const isFuture = chosenDate > dateFor(0);
 
   const sorted = [...categories].sort((a, b) => a.sort_order - b.sort_order);
   const grouped = sorted
@@ -200,9 +213,9 @@ function SendModal({ cartItems, categories, onClose, onDone, onSave, onIncrease,
   };
 
   const handleSave = () => {
-    const today = new Date().toISOString().split("T")[0];
+    if (!chosenDate) return;
     const log: MealLog = {
-      id: crypto.randomUUID(), date: today,
+      id: crypto.randomUUID(), date: chosenDate, meal,
       items: cartItems.map(ci => ({
         item_id: ci.item.id, name: ci.item.name,
         category_name: ci.category.name, image_url: ci.item.image_url,
@@ -233,11 +246,11 @@ function SendModal({ cartItems, categories, onClose, onDone, onSave, onIncrease,
         }}>
           <div>
             <h2 style={{ color: "#3A2A1A", fontSize: "1.0625rem", fontWeight: 800 }}>
-              {saved ? "✓ 已保存到食记" : "今日菜单"}
+              {saved ? (isFuture ? "✓ 已加进备餐计划" : "✓ 已保存到食记") : "今日菜单"}
             </h2>
             {saved && (
               <p style={{ color: "#9A7B5F", fontSize: "0.8125rem", marginTop: "2px" }}>
-                已保存到食记，可以复制发给主厨
+                {isFuture ? "到了那天打开食记就能看到啦" : "已保存到食记，可以复制发给主厨"}
               </p>
             )}
           </div>
@@ -309,6 +322,51 @@ function SendModal({ cartItems, categories, onClose, onDone, onSave, onIncrease,
           ))}
         </div>
 
+        {/* 备餐选择：哪天的哪一餐（默认今天+按时间猜的餐次，不改也能直接存） */}
+        {!saved && (
+          <div style={{ padding: "0 20px 14px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
+              <span style={{ color: "#B08A68", fontSize: "0.75rem", flexShrink: 0 }}>这是</span>
+              {[
+                { id: "today" as const, label: "今天" },
+                { id: "tomorrow" as const, label: "明天" },
+                { id: "custom" as const, label: "📅 选日期" },
+              ].map(d => (
+                <button key={d.id} onClick={() => setDateChoice(d.id)} style={{
+                  padding: "6px 12px", borderRadius: "999px", fontSize: "0.75rem",
+                  fontWeight: dateChoice === d.id ? 700 : 500, cursor: "pointer",
+                  backgroundColor: dateChoice === d.id ? "#F2A24A" : "#FFFFFF",
+                  color: dateChoice === d.id ? "#FFFFFF" : "#9A7B5F",
+                  border: "1.5px solid " + (dateChoice === d.id ? "#F2A24A" : "rgba(240,210,170,0.6)"),
+                }}>{d.label}</button>
+              ))}
+              {dateChoice === "custom" && (
+                <input
+                  type="date" value={customDate}
+                  min={dateFor(-30)}
+                  onChange={e => setCustomDate(e.target.value)}
+                  style={{
+                    padding: "5px 8px", borderRadius: "10px", fontSize: "0.75rem",
+                    border: "1.5px solid #FFE2BD", color: "#3A2A1A", backgroundColor: "#FFF",
+                  }}
+                />
+              )}
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <span style={{ color: "#B08A68", fontSize: "0.75rem", flexShrink: 0 }}>的</span>
+              {MEALS.map(m => (
+                <button key={m.id} onClick={() => setMeal(m.id)} style={{
+                  padding: "6px 14px", borderRadius: "999px", fontSize: "0.75rem",
+                  fontWeight: meal === m.id ? 700 : 500, cursor: "pointer",
+                  backgroundColor: meal === m.id ? "#F2A24A" : "#FFFFFF",
+                  color: meal === m.id ? "#FFFFFF" : "#9A7B5F",
+                  border: "1.5px solid " + (meal === m.id ? "#F2A24A" : "rgba(240,210,170,0.6)"),
+                }}>{m.emoji} {m.label}</button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div style={{ padding: "0 20px 24px", display: "flex", gap: "10px" }}>
           <button onClick={handleCopy} style={{
             flex: 1, padding: "13px", borderRadius: "16px",
@@ -321,14 +379,15 @@ function SendModal({ cartItems, categories, onClose, onDone, onSave, onIncrease,
             {copied ? "已复制 ✓" : "复制菜单"}
           </button>
           {!saved ? (
-            <button onClick={handleSave} style={{
+            <button onClick={handleSave} disabled={!chosenDate} style={{
               flex: 1, padding: "13px", borderRadius: "16px",
-              background: "linear-gradient(180deg, #F5B460 0%, #E8991E 100%)",
-              color: "#FFFFFF", fontSize: "0.875rem", fontWeight: 700,
-              border: "none", cursor: "pointer",
-              boxShadow: "0 5px 16px rgba(232,153,30,0.38)",
+              background: !chosenDate ? "#FFE8CC" : "linear-gradient(180deg, #F5B460 0%, #E8991E 100%)",
+              color: !chosenDate ? "#C8A878" : "#FFFFFF",
+              fontSize: "0.875rem", fontWeight: 700,
+              border: "none", cursor: !chosenDate ? "default" : "pointer",
+              boxShadow: !chosenDate ? "none" : "0 5px 16px rgba(232,153,30,0.38)",
             }}>
-              保存到食记
+              {isFuture ? "加进备餐计划" : "保存到食记"}
             </button>
           ) : (
             <button onClick={onDone} style={{

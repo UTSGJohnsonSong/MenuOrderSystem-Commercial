@@ -35,6 +35,7 @@ export interface MealLogEntry {
 export interface MealLog {
   id: string;
   date: string; // YYYY-MM-DD
+  meal: string; // 'breakfast' | 'lunch' | 'dinner' | 'all'（老数据）
   items: MealLogEntry[];
   created_at: string;
 }
