@@ -5,14 +5,17 @@ import { useRouter } from "next/navigation";
 import { useStore, useCart, saveMealLog } from "@/lib/store";
 import { MenuItem, Category, MealLog } from "@/lib/types";
 import { COVER_PRESETS, getCover } from "@/lib/covers";
+import { compressImage } from "@/lib/image";
+import { uploadImage } from "@/lib/store";
 import ItemDetailModal from "@/components/ItemDetailModal";
 import ItemForm from "@/components/ItemForm";
 
 function greeting(): string {
   const h = new Date().getHours();
-  if (h >= 5 && h < 10) return "早上好";
-  if (h >= 10 && h < 14) return "中午好";
-  if (h >= 14 && h < 18) return "下午好";
+  if (h < 5) return "夜深啦";
+  if (h < 10) return "早上好";
+  if (h < 14) return "中午好";
+  if (h < 18) return "下午好";
   return "晚上好";
 }
 
@@ -344,9 +347,12 @@ function SendModal({ cartItems, categories, onClose, onDone, onSave, onIncrease,
 }
 
 /* ─── 换封面 Bottom Sheet ─── */
-function CoverSheet({ current, onPick, onClose }: {
+function CoverSheet({ current, customUrl, uploading, onPick, onUpload, onClose }: {
   current: string;
+  customUrl: string | null;
+  uploading: boolean;
   onPick: (id: string) => void;
+  onUpload: (file: File) => void;
   onClose: () => void;
 }) {
   return (
@@ -359,6 +365,7 @@ function CoverSheet({ current, onPick, onClose }: {
         width: "100%", backgroundColor: "#FFF8EF",
         borderRadius: "26px 26px 0 0", padding: "22px 16px",
         paddingBottom: "calc(22px + env(safe-area-inset-bottom))",
+        maxHeight: "80dvh", overflowY: "auto",
       }}>
         <p style={{ color: "#3A2A1A", fontSize: "1rem", fontWeight: 800, textAlign: "center" }}>
           换一个小厨房封面
@@ -366,9 +373,50 @@ function CoverSheet({ current, onPick, onClose }: {
         <p style={{ color: "#9A7B5F", fontSize: "0.75rem", textAlign: "center", marginTop: "4px", marginBottom: "16px" }}>
           你们俩都能换，换了 TA 也看得到
         </p>
+
+        {/* 相册照片：主推入口 */}
+        <label style={{
+          display: "block", position: "relative",
+          height: customUrl ? "96px" : "auto",
+          padding: customUrl ? 0 : "16px",
+          borderRadius: "16px", overflow: "hidden",
+          border: customUrl ? "2.5px solid #E8991E" : "1.5px dashed #E0B584",
+          backgroundColor: "#FFFFFF",
+          cursor: uploading ? "wait" : "pointer",
+          textAlign: "center", marginBottom: "14px",
+        }}>
+          {customUrl ? (
+            <>
+              <img src={customUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+              <span style={{
+                position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
+                background: "rgba(30,18,10,0.35)", color: "#FFF6E8", fontSize: "0.8125rem", fontWeight: 700,
+              }}>
+                {uploading ? "正在换…" : "✓ 现在用的是你们的照片 · 点击换一张"}
+              </span>
+            </>
+          ) : (
+            <span style={{ color: "#C47A2C", fontSize: "0.875rem", fontWeight: 700 }}>
+              {uploading ? "正在上传…" : "📷 用相册里的照片当封面"}
+            </span>
+          )}
+          <input
+            type="file" accept="image/*" disabled={uploading}
+            style={{ display: "none" }}
+            onChange={e => {
+              const f = e.target.files?.[0];
+              if (f) onUpload(f);
+              e.target.value = "";
+            }}
+          />
+        </label>
+
+        <p style={{ color: "#B08A68", fontSize: "0.6875rem", marginBottom: "10px" }}>
+          {customUrl ? "或者换回内置风格（点任意一个即可）" : "或者选一个内置风格"}
+        </p>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
           {COVER_PRESETS.map(p => {
-            const selected = p.id === current;
+            const selected = !customUrl && p.id === current;
             return (
               <button key={p.id} onClick={() => onPick(p.id)} style={{
                 position: "relative", height: "76px", borderRadius: "16px",
@@ -515,7 +563,16 @@ export default function OrderPage() {
   const [randomItem, setRandomItem] = useState<MenuItem | null>(null);
   const [space, setSpace] = useState<SpaceLite | null>(null);
   const [showCoverSheet, setShowCoverSheet] = useState(false);
+  const [showCoverBtn, setShowCoverBtn] = useState(false); // 点封面才浮现的换封面按钮
+  const [uploadingCover, setUploadingCover] = useState(false);
   const [toast, setToast] = useState("");
+
+  // 换封面按钮浮现几秒后自动藏起来，保持封面干净
+  useEffect(() => {
+    if (!showCoverBtn) return;
+    const t = setTimeout(() => setShowCoverBtn(false), 3500);
+    return () => clearTimeout(t);
+  }, [showCoverBtn]);
 
   // 小厨房信息（名字 + 封面）：进页面拉一次，切回前台再刷（TA 换的封面也能看到）
   useEffect(() => {
@@ -534,18 +591,40 @@ export default function OrderPage() {
 
   const changeCover = async (presetId: string) => {
     if (!space) return;
-    const prev = space.cover_preset;
-    setSpace({ ...space, cover_preset: presetId }); // 即时预览
+    const prev = { ...space };
+    // 选内置风格 = 同时清掉相册封面，即时预览
+    setSpace({ ...space, cover_preset: presetId, cover_image_url: null });
     setShowCoverSheet(false);
     try {
-      const res = await fetch("/api/space", { method: "PATCH", body: JSON.stringify({ cover_preset: presetId }) });
+      const res = await fetch("/api/space", {
+        method: "PATCH",
+        body: JSON.stringify({ cover_preset: presetId, cover_image_url: null }),
+      });
       if (!res.ok) {
-        setSpace(s => s ? { ...s, cover_preset: prev } : s);
+        setSpace(prev);
         showToast(res.status === 403 ? "这个小厨房暂时不能这样改哦" : "封面暂时没换成功，等会儿再试试～");
       }
     } catch {
-      setSpace(s => s ? { ...s, cover_preset: prev } : s);
+      setSpace(prev);
       showToast("封面暂时没换成功，等会儿再试试～");
+    }
+  };
+
+  const uploadCover = async (file: File) => {
+    if (!space || uploadingCover) return;
+    setUploadingCover(true);
+    try {
+      const compressed = await compressImage(file, 1200); // 封面比菜品图大，给高一档分辨率
+      const url = await uploadImage(compressed);
+      const res = await fetch("/api/space", { method: "PATCH", body: JSON.stringify({ cover_image_url: url }) });
+      if (!res.ok) throw new Error();
+      setSpace(s => s ? { ...s, cover_image_url: url } : s);
+      setShowCoverSheet(false);
+      showToast("封面换好啦 ✓");
+    } catch {
+      showToast("封面暂时没换成功，等会儿再试试～");
+    } finally {
+      setUploadingCover(false);
     }
   };
 
@@ -599,16 +678,22 @@ export default function OrderPage() {
       {/* ── 小厨房封面卡 ── */}
       {(() => {
         const cover = getCover(space?.cover_preset);
-        const textColor = cover.dark ? "#FFF6E8" : "#4A2E1F";
-        const subColor = cover.dark ? "rgba(255,246,232,0.85)" : "#8A5A2B";
+        // 相册照片颜色不可控，一律按深色底处理（白字 + 加深遮罩）保证可读
+        const isPhoto = !!space?.cover_image_url;
+        const dark = isPhoto || cover.dark;
+        const textColor = dark ? "#FFF6E8" : "#4A2E1F";
+        const subColor = dark ? "rgba(255,246,232,0.88)" : "#8A5A2B";
         return (
-          <section style={{
-            flexShrink: 0, margin: "12px 12px 4px",
-            height: "188px", borderRadius: "24px",
-            position: "relative", overflow: "hidden",
-            background: cover.bg,
-            boxShadow: "0 6px 20px rgba(120,80,40,0.12)",
-          }}>
+          <section
+            onClick={() => setShowCoverBtn(v => !v)}
+            style={{
+              flexShrink: 0, margin: "12px 12px 4px",
+              height: "188px", borderRadius: "24px",
+              position: "relative", overflow: "hidden",
+              background: cover.bg,
+              boxShadow: "0 6px 20px rgba(120,80,40,0.12)",
+              cursor: "pointer",
+            }}>
             {/* 自定义封面图（预留：存在时盖在渐变上） */}
             {space?.cover_image_url && (
               <img src={space.cover_image_url} alt="" style={{
@@ -616,29 +701,43 @@ export default function OrderPage() {
                 objectFit: "cover",
               }} onError={e => { e.currentTarget.style.display = "none"; }} />
             )}
-            {/* 轻装饰 */}
-            <span style={{ position: "absolute", top: "14px", right: "64px", fontSize: "3.25rem", opacity: 0.5, transform: "rotate(8deg)" }}>
-              {cover.deco[0]}
-            </span>
-            <span style={{ position: "absolute", bottom: "18px", right: "22px", fontSize: "1.75rem", opacity: 0.45, transform: "rotate(-10deg)" }}>
-              {cover.deco[1]}
-            </span>
-            {/* 文字可读性遮罩 */}
+            {/* 轻装饰（照片封面不叠 emoji，别遮人家的照片） */}
+            {!isPhoto && (
+              <>
+                <span style={{ position: "absolute", top: "14px", right: "64px", fontSize: "3.25rem", opacity: 0.5, transform: "rotate(8deg)" }}>
+                  {cover.deco[0]}
+                </span>
+                <span style={{ position: "absolute", bottom: "18px", right: "22px", fontSize: "1.75rem", opacity: 0.45, transform: "rotate(-10deg)" }}>
+                  {cover.deco[1]}
+                </span>
+              </>
+            )}
+            {/* 文字可读性遮罩：照片用重一档的深色渐变 */}
             <div style={{
               position: "absolute", inset: 0,
-              background: cover.dark
-                ? "linear-gradient(0deg, rgba(30,18,10,0.30) 0%, rgba(30,18,10,0) 55%)"
-                : "linear-gradient(0deg, rgba(255,252,246,0.35) 0%, rgba(255,252,246,0) 55%)",
+              background: isPhoto
+                ? "linear-gradient(0deg, rgba(28,16,8,0.62) 0%, rgba(28,16,8,0.10) 58%, rgba(28,16,8,0) 75%)"
+                : cover.dark
+                  ? "linear-gradient(0deg, rgba(30,18,10,0.30) 0%, rgba(30,18,10,0) 55%)"
+                  : "linear-gradient(0deg, rgba(255,252,246,0.35) 0%, rgba(255,252,246,0) 55%)",
             }} />
-            {/* 换封面按钮 */}
-            <button onClick={() => setShowCoverSheet(true)} style={{
-              position: "absolute", top: "12px", right: "12px", zIndex: 2,
-              padding: "7px 13px", borderRadius: "999px", border: "none", cursor: "pointer",
-              backgroundColor: cover.dark ? "rgba(0,0,0,0.28)" : "rgba(255,255,255,0.55)",
-              color: cover.dark ? "#FFF6E8" : "#8A5A2B",
-              fontSize: "0.75rem", fontWeight: 600,
-              backdropFilter: "blur(4px)",
-            }}>
+            {/* 换封面按钮：点封面才在右下角浮现，几秒后自动收起 */}
+            <button
+              onClick={e => { e.stopPropagation(); setShowCoverBtn(false); setShowCoverSheet(true); }}
+              style={{
+                position: "absolute", bottom: "14px", right: "14px", zIndex: 2,
+                padding: "8px 14px", borderRadius: "999px", border: "none",
+                backgroundColor: dark ? "rgba(0,0,0,0.32)" : "rgba(255,255,255,0.65)",
+                color: dark ? "#FFF6E8" : "#8A5A2B",
+                fontSize: "0.75rem", fontWeight: 600,
+                backdropFilter: "blur(4px)",
+                opacity: showCoverBtn ? 1 : 0,
+                transform: showCoverBtn ? "translateY(0)" : "translateY(6px)",
+                pointerEvents: showCoverBtn ? "auto" : "none",
+                transition: "opacity 0.25s, transform 0.25s",
+                cursor: "pointer",
+              }}
+            >
               🎨 换封面
             </button>
             {/* 文案 */}
@@ -650,7 +749,7 @@ export default function OrderPage() {
                 color: textColor, fontSize: "1.5rem", fontWeight: 800,
                 marginTop: "2px", lineHeight: 1.3,
                 overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                textShadow: cover.dark ? "0 1px 8px rgba(0,0,0,0.25)" : "0 1px 8px rgba(255,255,255,0.5)",
+                textShadow: dark ? "0 1px 8px rgba(0,0,0,0.35)" : "0 1px 8px rgba(255,255,255,0.5)",
               }}>
                 「{space?.name || "我们的小厨房"}」
               </h1>
@@ -822,8 +921,11 @@ export default function OrderPage() {
       {showCoverSheet && space && (
         <CoverSheet
           current={space.cover_preset}
+          customUrl={space.cover_image_url}
+          uploading={uploadingCover}
           onPick={changeCover}
-          onClose={() => setShowCoverSheet(false)}
+          onUpload={uploadCover}
+          onClose={() => !uploadingCover && setShowCoverSheet(false)}
         />
       )}
 

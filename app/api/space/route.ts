@@ -49,13 +49,16 @@ export async function GET() {
 /*
  * 小厨房设置。权限分级：
  *   - name：只有主人能改（空间的身份归属）
- *   - cover_preset：所有成员都能换（低风险的共同装饰，更有一起生活感）
+ *   - cover_preset / cover_image_url：所有成员都能换（低风险的共同装饰，更有一起生活感）
+ * cover_image_url 存在时优先展示（相册照片封面）；传 null/空串 = 恢复内置封面。
  */
 export async function PATCH(req: Request) {
   try {
     const { user, spaceId } = await requireCurrentSpace();
-    const { name, cover_preset } = (await req.json()) as { name?: string; cover_preset?: string };
-    const result: { ok: true; name?: string; cover_preset?: string } = { ok: true };
+    const { name, cover_preset, cover_image_url } = (await req.json()) as {
+      name?: string; cover_preset?: string; cover_image_url?: string | null;
+    };
+    const result: { ok: true; name?: string; cover_preset?: string; cover_image_url?: string | null } = { ok: true };
 
     if (name !== undefined) {
       // 空名回退默认；上限 20 字
@@ -74,6 +77,15 @@ export async function PATCH(req: Request) {
       if (!COVER_IDS.has(cover_preset)) throw new ApiError(400, "没有这个封面哦");
       await sql`UPDATE spaces SET cover_preset = ${cover_preset} WHERE id = ${spaceId}`;
       result.cover_preset = cover_preset;
+    }
+
+    if (cover_image_url !== undefined) {
+      const url = (cover_image_url ?? "").trim();
+      if (url && !url.startsWith("/api/uploads/")) {
+        throw new ApiError(400, "封面图片要先上传哦");
+      }
+      await sql`UPDATE spaces SET cover_image_url = ${url || null} WHERE id = ${spaceId}`;
+      result.cover_image_url = url || null;
     }
 
     return NextResponse.json(result);

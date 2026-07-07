@@ -1,13 +1,13 @@
 "use client";
 
-/** 客户端图片压缩：最长边 ≤800px，输出 jpeg dataURL（配合 /api/upload 的 2MB 上限） */
-export function compressImage(file: File): Promise<string> {
+/** 客户端图片压缩：最长边 ≤maxSize（默认 800px），输出 jpeg dataURL（配合 /api/upload 的 2MB 上限） */
+export function compressImage(file: File, maxSize = 800): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       const img = new Image();
       img.onload = () => {
-        const MAX = 800;
+        const MAX = maxSize;
         let { width, height } = img;
         if (width > height && width > MAX) { height = Math.round(height * MAX / width); width = MAX; }
         else if (height > width && height > MAX) { width = Math.round(width * MAX / height); height = MAX; }
