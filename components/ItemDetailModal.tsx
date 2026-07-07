@@ -32,19 +32,22 @@ export default function ItemDetailModal({
 
   return (
     <div style={{
-      position: "fixed", inset: 0, zIndex: 50,
+      position: "fixed", inset: 0, zIndex: 60, // 高于底部导航(50)，否则按钮被导航栏压住
       display: "flex", alignItems: "flex-end", justifyContent: "center",
       backgroundColor: "rgba(45,31,20,0.45)",
     }} onClick={onClose}>
       <div onClick={e => e.stopPropagation()} style={{
         width: "100%", maxWidth: "480px",
-        maxHeight: "90dvh", overflowY: "auto",
+        // vh 兜底（dvh 部分浏览器不支持会导致整个弹窗滚不动）；
+        // 结构改为：图片固定 + 内容区滚动 + 按钮固定底部永远可见
+        maxHeight: "88vh",
+        display: "flex", flexDirection: "column",
         background: "linear-gradient(180deg, #FFFDF8 0%, #FFF7EA 100%)",
         borderRadius: "28px 28px 0 0",
-        paddingBottom: "env(safe-area-inset-bottom)",
+        overflow: "hidden",
       }}>
         {/* Image */}
-        <div style={{ position: "relative" }}>
+        <div style={{ position: "relative", flexShrink: 0 }}>
           {showPlaceholder ? (
             <div style={{
               width: "100%", aspectRatio: "16/9",
@@ -82,8 +85,14 @@ export default function ItemDetailModal({
           }}>×</button>
         </div>
 
-        {/* Content */}
-        <div style={{ padding: "20px 20px 28px" }}>
+        {/* Content：单独滚动区，长做法也能翻到底 */}
+        <div style={{
+          padding: "20px 20px 16px",
+          flex: 1, minHeight: 0,
+          overflowY: "auto",
+          WebkitOverflowScrolling: "touch",
+          overscrollBehavior: "contain",
+        }}>
           {/* Title row + edit/delete */}
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "16px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "8px", flex: 1, minWidth: 0 }}>
@@ -140,8 +149,17 @@ export default function ItemDetailModal({
             </div>
           )}
 
-          {/* Quantity control */}
-          <div style={{ marginTop: "20px" }}>
+        </div>
+
+        {/* Quantity control：固定底部，不随内容滚动 */}
+        <div style={{
+          flexShrink: 0,
+          padding: "12px 20px",
+          paddingBottom: "calc(14px + env(safe-area-inset-bottom))",
+          borderTop: "1px solid rgba(240,216,180,0.5)",
+          backgroundColor: "#FFFDF8",
+        }}>
+          <div>
             {quantity === 0 ? (
               <button onClick={onIncrease} style={{
                 width: "100%", padding: "14px",
