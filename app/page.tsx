@@ -8,9 +8,11 @@ import { COVER_PRESETS, getCover } from "@/lib/covers";
 import { MEALS, guessMeal } from "@/lib/meals";
 import { compressImage } from "@/lib/image";
 import { uploadImage } from "@/lib/store";
+import { uid } from "@/lib/uid";
 import ItemDetailModal from "@/components/ItemDetailModal";
 import CatIcon from "@/components/CatIcon";
 import ItemForm from "@/components/ItemForm";
+import CoverCropper from "@/components/CoverCropper";
 
 function greeting(): string {
   const h = new Date().getHours();
@@ -173,7 +175,7 @@ function SendModal({ cartItems, categories, onClose, onDone, onSave, onIncrease,
   categories: Category[];
   onClose: () => void;
   onDone: () => void;
-  onSave: (log: MealLog) => void;
+  onSave: (log: MealLog) => void | Promise<unknown>;
   onIncrease: (itemId: string) => void;
   onDecrease: (itemId: string) => void;
 }) {
@@ -207,10 +209,13 @@ function SendModal({ cartItems, categories, onClose, onDone, onSave, onIncrease,
     });
   };
 
-  const handleSave = () => {
+  const [saveErr, setSaveErr] = useState("");
+
+  const handleSave = async () => {
     if (!chosenDate) return;
+    setSaveErr("");
     const log: MealLog = {
-      id: crypto.randomUUID(), date: chosenDate, meal,
+      id: uid(), date: chosenDate, meal,
       items: cartItems.map(ci => ({
         item_id: ci.item.id, name: ci.item.name,
         category_name: ci.category.name, image_url: ci.item.image_url,
@@ -218,8 +223,12 @@ function SendModal({ cartItems, categories, onClose, onDone, onSave, onIncrease,
       })),
       created_at: new Date().toISOString(),
     };
-    onSave(log);
-    setSaved(true);
+    try {
+      await onSave(log);
+      setSaved(true);
+    } catch (e) {
+      setSaveErr(e instanceof Error && e.message ? e.message : "没保存上，网络差了点，再试一次？");
+    }
   };
 
   return (
@@ -362,6 +371,10 @@ function SendModal({ cartItems, categories, onClose, onDone, onSave, onIncrease,
               ))}
             </div>
           </div>
+        )}
+
+        {saveErr && (
+          <p style={{ color: "#D9534F", fontSize: "0.75rem", padding: "0 20px 8px" }}>{saveErr}</p>
         )}
 
         <div style={{ padding: "0 20px 24px", display: "flex", gap: "10px" }}>
@@ -668,15 +681,25 @@ export default function OrderPage() {
     }
   };
 
-  const uploadCover = async (file: File) => {
+  // 选完照片先进裁剪层（拖动取景 + 缩放），确认后才压缩上传
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
+
+  const pickCoverPhoto = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = e => setCropSrc(e.target?.result as string);
+    reader.onerror = () => showToast("照片读取失败，换一张试试？");
+    reader.readAsDataURL(file);
+  };
+
+  const confirmCrop = async (jpegDataUrl: string) => {
     if (!space || uploadingCover) return;
     setUploadingCover(true);
     try {
-      const compressed = await compressImage(file, 1200); // 封面比菜品图大，给高一档分辨率
-      const url = await uploadImage(compressed);
+      const url = await uploadImage(jpegDataUrl); // 裁剪器已输出 1200 宽 jpeg
       const res = await fetch("/api/space", { method: "PATCH", body: JSON.stringify({ cover_image_url: url }) });
       if (!res.ok) throw new Error();
       setSpace(s => s ? { ...s, cover_image_url: url } : s);
+      setCropSrc(null);
       setShowCoverSheet(false);
       showToast("封面换好啦 ✓");
     } catch {
@@ -957,7 +980,7 @@ export default function OrderPage() {
           categories={categories}
           onClose={() => setShowSendModal(false)}
           onDone={() => { setShowSendModal(false); clearCart(); }}
-          onSave={log => { saveMealLog(log); }}
+          onSave={log => saveMealLog(log)}
           onIncrease={itemId => {
             const item = items.find(i => i.id === itemId);
             const cat = categories.find(c => c.id === item?.category_id);
@@ -986,8 +1009,17 @@ export default function OrderPage() {
           customUrl={space.cover_image_url}
           uploading={uploadingCover}
           onPick={changeCover}
-          onUpload={uploadCover}
+          onUpload={pickCoverPhoto}
           onClose={() => !uploadingCover && setShowCoverSheet(false)}
+        />
+      )}
+
+      {cropSrc && (
+        <CoverCropper
+          src={cropSrc}
+          uploading={uploadingCover}
+          onConfirm={confirmCrop}
+          onCancel={() => !uploadingCover && setCropSrc(null)}
         />
       )}
 

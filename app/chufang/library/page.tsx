@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
 import { LIBRARY_DISHES, LIBRARY_CATS, searchLibrary, LibraryDish } from "@/lib/library";
+import { uid } from "@/lib/uid";
 
 export default function LibraryPage() {
   const router = useRouter();
@@ -44,7 +45,7 @@ export default function LibraryPage() {
     try {
       const now = new Date().toISOString();
       await addItem({
-        id: crypto.randomUUID(), // 服务端会重新生成
+        id: uid(), // 服务端会重新生成
         category_id: categoryId,
         name: dish.name,
         image_url: libImages[dish.name] ?? "",

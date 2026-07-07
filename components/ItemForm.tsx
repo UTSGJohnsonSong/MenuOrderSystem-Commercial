@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { MenuItem, Category } from "@/lib/types";
 import { uploadImage } from "@/lib/store";
 import { compressImage } from "@/lib/image";
+import { uid } from "@/lib/uid";
 
 interface Props {
   item: MenuItem | null;
@@ -61,7 +62,7 @@ export default function ItemForm({ item, categories, existingItems, onSave, onCa
     const categoryItems = existingItems.filter(i => i.category_id === categoryId);
 
     onSave({
-      id: item?.id ?? crypto.randomUUID(),
+      id: item?.id ?? uid(),
       category_id: categoryId,
       name: name.trim(),
       image_url: imageUrl.trim(),
