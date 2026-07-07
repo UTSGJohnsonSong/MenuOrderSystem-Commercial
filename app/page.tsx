@@ -86,9 +86,9 @@ function FoodCard({ item, categoryId, quantity, onIncrease, onDecrease, onClick 
   return (
     <div style={{
       backgroundColor: "#FFFFFF",
-      borderRadius: "22px",
+      borderRadius: "18px",
       overflow: "hidden",
-      border: "1.5px solid rgba(240,210,170,0.6)",
+      border: "1.5px solid rgba(240,216,180,0.7)",
       boxShadow: "0 6px 20px rgba(120,80,40,0.09)",
     }}>
       {/* Image */}
@@ -123,7 +123,7 @@ function FoodCard({ item, categoryId, quantity, onIncrease, onDecrease, onClick 
         </p>
         {ingShort && (
           <p style={{
-            color: "#B08A68", fontSize: "0.6875rem", marginTop: "4px",
+            color: "#8A6F5A", fontSize: "0.6875rem", marginTop: "4px",
             overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
             lineHeight: 1.5,
           }}>
@@ -805,12 +805,13 @@ export default function OrderPage() {
                 {greeting()}，欢迎回到
               </p>
               <h1 style={{
-                color: textColor, fontSize: "1.5rem", fontWeight: 800,
-                marginTop: "2px", lineHeight: 1.3,
-                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                color: textColor, fontSize: "1.75rem", fontWeight: 800,
+                marginTop: "2px", lineHeight: 1.25,
+                overflow: "hidden", display: "-webkit-box",
+                WebkitLineClamp: 2, WebkitBoxOrient: "vertical",
                 textShadow: dark ? "0 1px 8px rgba(0,0,0,0.35)" : "0 1px 8px rgba(255,255,255,0.5)",
               }}>
-                「{space?.name || "我们的小厨房"}」
+                {space?.name || "我们的小厨房"}
               </h1>
               <p style={{ color: subColor, fontSize: "0.875rem", marginTop: "3px" }}>
                 今天想吃什么呀？

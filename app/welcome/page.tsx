@@ -17,40 +17,51 @@ export default function WelcomePage() {
     }}>
       <SourceTracker />
       <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", paddingTop: "48px" }}>
-        <div style={{ fontSize: "3.5rem", marginBottom: "18px" }}>🍲</div>
-        <h1 style={{ color: "#3A2A1A", fontSize: "1.75rem", fontWeight: 800, lineHeight: 1.3 }}>
+        {/* 品牌图标：和 App 图标同源，落地页/登录页不断品牌 */}
+        <img src="/icon.png" alt="" style={{
+          width: "64px", height: "64px", borderRadius: "18px",
+          marginBottom: "18px", display: "block",
+          boxShadow: "0 4px 14px rgba(232,153,30,0.25)",
+        }} />
+        <h1 style={{ color: "#2F241D", fontSize: "1.75rem", fontWeight: 800, lineHeight: 1.3 }}>
           今天吃什么呀
         </h1>
-        <p style={{ color: "#9A7B5F", fontSize: "0.9375rem", marginTop: "12px", lineHeight: 1.7 }}>
-          和对象、室友一起维护你们自己的菜单库。<br />
-          想吃什么点一点，吃过什么都记得。
+        <p style={{ color: "#6F5A48", fontSize: "0.9375rem", marginTop: "12px", lineHeight: 1.7 }}>
+          把 TA 会做的菜收进你们的小厨房。<br />
+          想吃什么点一下，吃过的每一顿都记得。
         </p>
 
-        <div style={{ marginTop: "36px", display: "flex", flexDirection: "column", gap: "14px" }}>
+        <div style={{ marginTop: "32px", display: "flex", flexDirection: "column", gap: "14px" }}>
           {[
-            ["🏠", "你们的小厨房", "一人建厨房，邀请 TA 加入，菜单和食记只属于你们"],
-            ["🍜", "像点外卖一样点菜", "选好想吃的，一键发给今天掌勺的人"],
-            ["📖", "每天好好吃饭", "每一顿都自动记成食记，翻翻你们吃过的日子"],
+            ["🏠", "你们自己的小厨房", "把 TA 拉进来，菜单和食记都只属于你们"],
+            ["🍜", "像点外卖一样点菜", "想吃什么点一下，今天掌勺的人马上知道"],
+            ["📖", "吃过的每一顿都记得", "慢慢翻回去，全是你们一起生活的日子"],
           ].map(([icon, title, desc]) => (
             <div key={title} style={{
               display: "flex", gap: "14px", alignItems: "flex-start",
               backgroundColor: "#FFFFFF", borderRadius: "18px", padding: "16px",
-              border: "1.5px solid rgba(240,210,170,0.5)",
+              border: "1.5px solid rgba(240,216,180,0.7)",
               boxShadow: "0 4px 14px rgba(120,80,40,0.06)",
             }}>
-              <span style={{ fontSize: "1.5rem" }}>{icon}</span>
+              {/* emoji 统一进 40px 奶油圆底，消除系统 emoji 的大小跳动 */}
+              <span style={{
+                width: "40px", height: "40px", borderRadius: "50%", flexShrink: 0,
+                backgroundColor: "#FFF1DD",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: "1.375rem", lineHeight: 1,
+              }}>{icon}</span>
               <div>
-                <p style={{ color: "#3A2A1A", fontSize: "0.9375rem", fontWeight: 700 }}>{title}</p>
-                <p style={{ color: "#9A7B5F", fontSize: "0.8125rem", marginTop: "3px", lineHeight: 1.5 }}>{desc}</p>
+                <p style={{ color: "#2F241D", fontSize: "0.9375rem", fontWeight: 700 }}>{title}</p>
+                <p style={{ color: "#6F5A48", fontSize: "0.8125rem", marginTop: "3px", lineHeight: 1.5 }}>{desc}</p>
               </div>
             </div>
           ))}
         </div>
 
         <Link href="/login" style={{
-          marginTop: "36px",
+          marginTop: "32px",
           display: "block", textAlign: "center",
-          padding: "16px", borderRadius: "18px",
+          padding: "16px", borderRadius: "14px",
           background: "linear-gradient(180deg, #F5B460 0%, #E8991E 100%)",
           color: "#FFFFFF", fontSize: "1rem", fontWeight: 700,
           textDecoration: "none",
@@ -58,8 +69,8 @@ export default function WelcomePage() {
         }}>
           创建我们的小厨房
         </Link>
-        <p style={{ textAlign: "center", color: "#C8A878", fontSize: "0.75rem", marginTop: "12px" }}>
-          手机号登录，免费使用
+        <p style={{ textAlign: "center", color: "#A58A72", fontSize: "0.75rem", marginTop: "12px" }}>
+          手机号登录 · 现在免费使用
         </p>
       </div>
 
@@ -69,7 +80,7 @@ export default function WelcomePage() {
           {" · "}
           <Link href="/privacy" style={{ color: "#C8A878" }}>隐私政策</Link>
           {" · "}
-          <Link href="/install" style={{ color: "#C8A878" }}>放到手机桌面</Link>
+          <Link href="/install" style={{ color: "#C8A878" }}>添加到主屏幕</Link>
         </p>
         {icp && (
           <p style={{ fontSize: "0.6875rem", color: "#D6BC9C", marginTop: "6px" }}>

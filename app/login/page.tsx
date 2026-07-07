@@ -5,8 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 const inputStyle: React.CSSProperties = {
   width: "100%", padding: "15px 16px",
-  border: "1.5px solid #FFE2BD", borderRadius: "16px",
-  fontSize: "1rem", backgroundColor: "#FFFFFF", color: "#3D2C22",
+  border: "1.5px solid #F0D8B4", borderRadius: "14px",
+  fontSize: "1rem", backgroundColor: "#FFFFFF", color: "#2F241D",
   outline: "none",
 };
 
@@ -73,24 +73,34 @@ function LoginForm() {
   return (
     <div style={{
       minHeight: "100dvh",
-      display: "flex", flexDirection: "column", justifyContent: "center",
+      display: "flex", flexDirection: "column",
       background: "linear-gradient(180deg, #FFFDF8 0%, #FFF3E0 100%)",
-      padding: "0 28px 60px",
+      padding: "96px 28px 60px",
     }}>
-      <div style={{ fontSize: "2.75rem", marginBottom: "14px" }}>🔑</div>
-      <h1 style={{ color: "#3A2A1A", fontSize: "1.5rem", fontWeight: 800 }}>
-        {inviteCode ? "登录后加入 TA 的小厨房" : "手机号登录"}
+      {/* 品牌图标：与落地页/App 图标同源，不断品牌 */}
+      <img src="/icon.png" alt="" style={{
+        width: "56px", height: "56px", borderRadius: "16px",
+        marginBottom: "16px", display: "block",
+        boxShadow: "0 4px 14px rgba(232,153,30,0.25)",
+      }} />
+      <h1 style={{ color: "#2F241D", fontSize: "1.5rem", fontWeight: 800 }}>
+        {inviteCode ? "欢迎来一起点菜" : "欢迎回来"}
       </h1>
-      <p style={{ color: "#9A7B5F", fontSize: "0.875rem", marginTop: "8px", lineHeight: 1.6 }}>
+      <p style={{ color: "#6F5A48", fontSize: "0.875rem", marginTop: "8px", lineHeight: 1.6 }}>
         {inviteCode
-          ? `使用邀请码 ${inviteCode}，登录后自动加入`
-          : "首次登录自动创建你们的小厨房"}
+          ? `用手机号登录，就能加入 TA 的小厨房（邀请码 ${inviteCode}）`
+          : "用手机号登录你们的小厨房"}
       </p>
+      {!inviteCode && (
+        <p style={{ color: "#A58A72", fontSize: "0.75rem", marginTop: "4px" }}>
+          第一次登录会自动创建一个新的小厨房
+        </p>
+      )}
 
       <div style={{ marginTop: "32px", display: "flex", flexDirection: "column", gap: "14px" }}>
         <input
           type="tel" inputMode="numeric" maxLength={11}
-          placeholder="手机号"
+          placeholder="输入手机号"
           value={phone}
           onChange={e => { setPhone(e.target.value.replace(/\D/g, "")); setError(""); }}
           style={inputStyle}
@@ -99,7 +109,7 @@ function LoginForm() {
         <div style={{ display: "flex", gap: "10px" }}>
           <input
             type="text" inputMode="numeric" maxLength={6}
-            placeholder="验证码"
+            placeholder="输入验证码"
             value={code}
             onChange={e => { setCode(e.target.value.replace(/\D/g, "")); setError(""); }}
             style={{ ...inputStyle, flex: 1 }}
@@ -108,14 +118,15 @@ function LoginForm() {
             onClick={sendCode}
             disabled={!phoneOk || countdown > 0 || busy}
             style={{
-              padding: "0 18px", borderRadius: "16px", border: "none",
-              backgroundColor: !phoneOk || countdown > 0 ? "#FFE8CC" : "#F5B460",
-              color: !phoneOk || countdown > 0 ? "#C8A878" : "#FFFFFF",
-              fontSize: "0.875rem", fontWeight: 600, whiteSpace: "nowrap",
+              padding: "0 18px", borderRadius: "14px", border: "none",
+              backgroundColor: !phoneOk || countdown > 0 ? "#F3E4C8" : "#E8A63C",
+              color: !phoneOk || countdown > 0 ? "#BFA77C" : "#FFFFFF",
+              fontSize: "0.875rem", fontWeight: 700, whiteSpace: "nowrap",
               cursor: !phoneOk || countdown > 0 ? "default" : "pointer",
+              boxShadow: !phoneOk || countdown > 0 ? "none" : "0 3px 10px rgba(232,166,60,0.35)",
             }}
           >
-            {countdown > 0 ? `${countdown}s` : sent ? "重新发送" : "获取验证码"}
+            {countdown > 0 ? `${countdown} 秒后重试` : sent ? "重新发送" : "获取验证码"}
           </button>
         </div>
 
@@ -130,11 +141,11 @@ function LoginForm() {
           onClick={verify}
           disabled={!phoneOk || code.length !== 6 || busy}
           style={{
-            marginTop: "8px", padding: "16px", borderRadius: "18px", border: "none",
+            marginTop: "8px", padding: "16px", borderRadius: "14px", border: "none",
             background: !phoneOk || code.length !== 6
-              ? "#FFE8CC"
+              ? "#F3E4C8"
               : "linear-gradient(180deg, #F5B460 0%, #E8991E 100%)",
-            color: !phoneOk || code.length !== 6 ? "#C8A878" : "#FFFFFF",
+            color: !phoneOk || code.length !== 6 ? "#BFA77C" : "#FFFFFF",
             fontSize: "1rem", fontWeight: 700,
             cursor: !phoneOk || code.length !== 6 ? "default" : "pointer",
             boxShadow: phoneOk && code.length === 6 ? "0 6px 20px rgba(232,153,30,0.4)" : "none",
@@ -143,10 +154,10 @@ function LoginForm() {
           {busy ? "请稍等…" : "登录"}
         </button>
 
-        <p style={{ color: "#C8A878", fontSize: "0.6875rem", textAlign: "center", lineHeight: 1.6, marginTop: "8px" }}>
-          登录即代表同意
-          <a href="/terms" style={{ color: "#C47A2C" }}>《用户协议》</a>和
-          <a href="/privacy" style={{ color: "#C47A2C" }}>《隐私政策》</a>
+        <p style={{ color: "#A58A72", fontSize: "0.75rem", textAlign: "center", lineHeight: 1.6, marginTop: "8px" }}>
+          登录即表示你已阅读并同意
+          <a href="/terms" style={{ color: "#C9831F" }}>《用户协议》</a>和
+          <a href="/privacy" style={{ color: "#C9831F" }}>《隐私政策》</a>
         </p>
       </div>
     </div>
