@@ -2,43 +2,81 @@ import Link from "next/link";
 
 export const metadata = { title: "用户协议 · 今天吃什么呀" };
 
-const h2: React.CSSProperties = { color: "#3A2A1A", fontSize: "1rem", fontWeight: 800, marginTop: "24px", marginBottom: "8px" };
-const p: React.CSSProperties = { color: "#6B543F", fontSize: "0.875rem", lineHeight: 1.8 };
+const h2: React.CSSProperties = { color: "#2F241D", fontSize: "1rem", fontWeight: 800, marginTop: "24px", marginBottom: "8px" };
+const p: React.CSSProperties = { color: "#6F5A48", fontSize: "0.875rem", lineHeight: 1.8 };
 
 export default function TermsPage() {
   return (
-    <div style={{ minHeight: "100dvh", backgroundColor: "#FFF8EF", padding: "24px 24px 80px" }}>
+    <div style={{ minHeight: "100dvh", backgroundColor: "#FFF8EF", padding: "24px 24px 80px", maxWidth: "640px", margin: "0 auto" }}>
       <Link href="/welcome" style={{ color: "#9A7B5F", fontSize: "0.875rem", textDecoration: "none" }}>← 返回</Link>
-      <h1 style={{ color: "#3A2A1A", fontSize: "1.375rem", fontWeight: 800, marginTop: "16px" }}>用户协议</h1>
-      <p style={{ ...p, marginTop: "8px", color: "#9A7B5F" }}>更新日期：2026年7月3日</p>
+      <h1 style={{ color: "#2F241D", fontSize: "1.375rem", fontWeight: 800, marginTop: "16px" }}>用户协议</h1>
+      <p style={{ ...p, marginTop: "8px", color: "#9A7B5F" }}>更新日期：2026年7月7日</p>
 
-      <h2 style={h2}>1. 服务说明</h2>
+      <h2 style={h2}>1. 引言</h2>
       <p style={p}>
-        「今天吃什么呀」是一款供情侣、室友、家庭成员共同维护菜单和点菜记录的生活工具。
-        当前所有功能免费提供；未来如推出付费能力，会提前在应用内明确告知，不会影响已有的免费功能。
+        欢迎使用「今天吃什么呀」。您注册或使用本服务即表示同意本协议；如不同意，请停止使用。
       </p>
 
-      <h2 style={h2}>2. 账号</h2>
+      <h2 style={h2}>2. 服务说明</h2>
       <p style={p}>
-        使用手机号验证码登录即完成注册。请妥善保管你的手机号和验证码，
-        因主动泄露验证码导致的损失需自行承担。
+        「今天吃什么呀」是一款供情侣、室友、家庭成员共同维护菜单、点菜和记录食记的生活工具。
+        当前所有功能免费提供；未来如推出付费能力，会提前在应用内明确告知，且不会拿走已有的免费功能。
       </p>
 
-      <h2 style={h2}>3. 用户内容</h2>
+      <h2 style={h2}>3. 账号</h2>
       <p style={p}>
-        你在小厨房里创建的菜品、图片和食记归你所有。你上传的内容不得违反中华人民共和国相关法律法规，
-        不得包含侵权、违法或不当信息；违规内容我们有权删除，情节严重的将封禁相关账号。
+        · 使用手机号验证码登录即完成注册，无需设置密码。<br />
+        · 请妥善保管验证码，不要转发给任何人；因主动泄露验证码导致的损失需自行承担。<br />
+        · 您可以随时在「小厨房设置 → 危险操作」中注销账号，注销后账号数据即刻删除且无法恢复（详见《隐私政策》）。
       </p>
 
-      <h2 style={h2}>4. 服务变更与终止</h2>
+      <h2 style={h2}>4. 小厨房与共享数据</h2>
       <p style={p}>
-        我们会尽力保障服务稳定运行，但不对不可抗力导致的服务中断承担责任。
-        如计划停止服务，我们将提前 30 天公告，并提供数据导出途径。
+        小厨房是多人共享的空间，请知悉以下规则：<br />
+        · 您在小厨房里创建的菜品、图片、食记、备餐计划，对该小厨房的<strong>全部成员可见</strong>，成员也可以编辑和点选这些内容。<br />
+        · 邀请码请只发给您信任的人；邀请码可随时在设置中重置，重置后旧码立即失效。<br />
+        · 小厨房主人可以移出成员、解散小厨房；解散后全部成员将失去该厨房的菜单和食记，操作不可撤销，请谨慎。<br />
+        · 成员退出或被移出后，将不再能访问该小厨房的任何数据。
       </p>
 
-      <h2 style={h2}>5. 联系方式</h2>
+      <h2 style={h2}>5. 用户行为规范</h2>
       <p style={p}>
-        对本协议有任何疑问，请发邮件至 zeksong0914@gmail.com。
+        您上传的内容（菜名、图片、备注等）不得违反中华人民共和国法律法规，不得包含以下内容：
+        违法信息、侵犯他人权益的内容、色情暴力信息、病毒或恶意代码。
+        对违规内容我们有权删除，情节严重的将封禁相关小厨房及账号。
+      </p>
+
+      <h2 style={h2}>6. 知识产权</h2>
+      <p style={p}>
+        · 本应用的设计、代码、图标、插画及内置菜品库归开发者所有，未经授权不得复制、修改或用于其他用途。<br />
+        · 您创建的菜品、照片和食记归<strong>您</strong>所有；您授权我们存储和展示这些内容，仅用于向您和您的小厨房成员提供服务，不作他用。
+      </p>
+
+      <h2 style={h2}>7. 免责声明</h2>
+      <p style={p}>
+        · 本应用是生活记录工具，内置菜谱的食材和做法仅供参考，不构成营养、健康或医疗建议。<br />
+        · 我们会尽力保障服务稳定和数据安全（每日备份），但不对不可抗力、设备故障或用户误操作（如解散小厨房）导致的数据丢失承担责任。
+      </p>
+
+      <h2 style={h2}>8. 服务变更与终止</h2>
+      <p style={p}>
+        我们可能因系统维护、法律要求等原因调整或暂停部分服务，将通过应用内公告告知。
+        如计划永久停止服务，我们将提前 30 天公告，并提供数据导出途径。您也可以随时停止使用并注销账号。
+      </p>
+
+      <h2 style={h2}>9. 协议更新</h2>
+      <p style={p}>
+        我们可能因产品功能或法律政策变化更新本协议。重大变更会在应用内通知；更新后继续使用即视为同意。
+      </p>
+
+      <h2 style={h2}>10. 适用法律与争议解决</h2>
+      <p style={p}>
+        本协议适用中华人民共和国法律。如发生争议，建议先通过下方邮箱与我们友好协商；协商不成的，可向有管辖权的人民法院提起诉讼。
+      </p>
+
+      <h2 style={h2}>11. 联系我们</h2>
+      <p style={p}>
+        对本协议有任何疑问，请发邮件至 zeksong0914@gmail.com，我们会在 10 个工作日内回复。
       </p>
     </div>
   );
