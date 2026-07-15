@@ -9,6 +9,9 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: "cover",          // Extend behind iPhone notch / home bar
   themeColor: "#F5B460",         // Matches tab bar when app is active
+  // 键盘弹出时浮在页面上方，而不是压缩布局视口——否则安卓上
+  // 100dvh 的页面会在聚焦输入框的瞬间整体上移/重排，很违和
+  interactiveWidget: "resizes-visual",
 };
 
 /* ── Metadata ── */
