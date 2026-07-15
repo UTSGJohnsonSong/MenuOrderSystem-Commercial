@@ -50,6 +50,33 @@ export async function ensureSchema() {
   await sql`ALTER TABLE spaces ADD COLUMN IF NOT EXISTS cover_preset TEXT NOT NULL DEFAULT 'warm-orange'`;
   await sql`ALTER TABLE spaces ADD COLUMN IF NOT EXISTS cover_image_url TEXT`;
 
+  // 封禁与软删分开：banned_at 可恢复，成员登录后看到「暂时无法访问」提示
+  await sql`ALTER TABLE spaces ADD COLUMN IF NOT EXISTS banned_at TIMESTAMPTZ`;
+
+  // 管理操作留痕：谁、何时、对哪个空间、做了什么。出纠纷时的唯一证据。
+  await sql`
+    CREATE TABLE IF NOT EXISTS admin_actions (
+      id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      admin_user_id UUID REFERENCES users(id),
+      space_id      UUID REFERENCES spaces(id),
+      action        TEXT NOT NULL,
+      note          TEXT NOT NULL DEFAULT '',
+      created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `;
+
+  // 付费墙（Phase B）用的收款记录表，提前建好不费事
+  await sql`
+    CREATE TABLE IF NOT EXISTS payments (
+      id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      space_id   UUID NOT NULL REFERENCES spaces(id),
+      amount     NUMERIC NOT NULL,
+      method     TEXT NOT NULL,
+      note       TEXT NOT NULL DEFAULT '',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `;
+
   await sql`
     CREATE TABLE IF NOT EXISTS space_members (
       space_id  UUID NOT NULL REFERENCES spaces(id) ON DELETE CASCADE,

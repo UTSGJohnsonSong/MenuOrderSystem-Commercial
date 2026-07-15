@@ -83,13 +83,14 @@ export async function ensureUserHasSpace(userId: string) {
 /** 通过邀请码加入空间（校验成员上限，加行锁防并发挤爆） */
 export async function joinSpaceByCode(userId: string, code: string): Promise<SpaceInfo> {
   return withTransaction(async sql => {
-    const [space] = await sql<SpaceInfo>`
-      SELECT id, name, invite_code, member_limit, owner_id
+    const [space] = await sql<SpaceInfo & { banned_at: string | null }>`
+      SELECT id, name, invite_code, member_limit, owner_id, banned_at
       FROM spaces
       WHERE invite_code = ${code.trim().toUpperCase()} AND deleted_at IS NULL
       FOR UPDATE
     `;
     if (!space) throw new ApiError(404, "邀请码不对哦，再检查一下？");
+    if (space.banned_at) throw new ApiError(403, "这个小厨房暂时无法访问");
 
     const [existing] = await sql`
       SELECT 1 AS ok FROM space_members WHERE space_id = ${space.id} AND user_id = ${userId}

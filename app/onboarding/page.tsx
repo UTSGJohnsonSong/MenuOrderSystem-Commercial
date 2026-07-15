@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 
 interface Me {
   user: { id: string } | null;
-  space: { name: string; invite_code: string } | null;
+  space: { name: string; invite_code: string; banned?: boolean } | null;
 }
 
 export default function OnboardingPage() {
@@ -29,6 +29,27 @@ export default function OnboardingPage() {
   }, [router]);
 
   if (!me?.space) return null;
+
+  // 被管理员封禁的小厨房：业务接口全部 403 会落到这里，给一个明确的说明页
+  if (me.space.banned) {
+    return (
+      <div style={{
+        minHeight: "100dvh",
+        display: "flex", flexDirection: "column", justifyContent: "center",
+        background: "linear-gradient(180deg, #FFFDF8 0%, #FFF3E0 100%)",
+        padding: "0 28px 60px", textAlign: "center",
+      }}>
+        <div style={{ fontSize: "3.5rem", marginBottom: "16px" }}>🔒</div>
+        <h1 style={{ color: "#3A2A1A", fontSize: "1.375rem", fontWeight: 800, lineHeight: 1.4 }}>
+          小厨房暂时无法访问
+        </h1>
+        <p style={{ color: "#9A7B5F", fontSize: "0.9375rem", marginTop: "12px", lineHeight: 1.7 }}>
+          「{me.space.name}」因为违反使用规则被暂停了。<br />
+          如果你觉得这是误会，请联系我们处理。
+        </p>
+      </div>
+    );
+  }
 
   const inviteLink = `${window.location.origin}/join?code=${me.space.invite_code}`;
 

@@ -103,12 +103,14 @@ export async function requireAdmin(): Promise<AuthUser> {
 export async function requireCurrentSpace(): Promise<{ user: AuthUser; spaceId: string }> {
   const user = await requireUser();
   if (!user.active_space_id) throw new ApiError(403, "NO_SPACE");
-  const [member] = await sql`
-    SELECT 1 AS ok FROM space_members m
+  const [member] = await sql<{ banned_at: string | null }>`
+    SELECT s.banned_at FROM space_members m
     JOIN spaces s ON s.id = m.space_id AND s.deleted_at IS NULL
     WHERE m.space_id = ${user.active_space_id} AND m.user_id = ${user.id}
   `;
   if (!member) throw new ApiError(403, "NO_SPACE");
+  // 被管理员封禁的空间：所有业务接口一律 403，前端落到 onboarding 展示「暂时无法访问」
+  if (member.banned_at) throw new ApiError(403, "SPACE_BANNED");
   return { user, spaceId: user.active_space_id };
 }
 

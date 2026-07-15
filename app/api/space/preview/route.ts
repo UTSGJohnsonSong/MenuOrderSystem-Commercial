@@ -12,7 +12,7 @@ export async function GET(req: Request) {
       SELECT s.name, s.member_limit,
              (SELECT count(*) FROM space_members m WHERE m.space_id = s.id)::text AS member_count
       FROM spaces s
-      WHERE s.invite_code = ${code} AND s.deleted_at IS NULL
+      WHERE s.invite_code = ${code} AND s.deleted_at IS NULL AND s.banned_at IS NULL
     `;
     if (!space) throw new ApiError(404, "这个邀请码好像过期啦，问问小厨房主人要一个新的吧");
 

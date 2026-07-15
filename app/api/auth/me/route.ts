@@ -11,9 +11,9 @@ export async function GET() {
     if (user.active_space_id) {
       const [row] = await sql<{
         id: string; name: string; invite_code: string; member_limit: number;
-        owner_id: string; member_count: string;
+        owner_id: string; member_count: string; banned_at: string | null;
       }>`
-        SELECT s.id, s.name, s.invite_code, s.member_limit, s.owner_id,
+        SELECT s.id, s.name, s.invite_code, s.member_limit, s.owner_id, s.banned_at,
                (SELECT count(*) FROM space_members m WHERE m.space_id = s.id)::text AS member_count
         FROM spaces s
         JOIN space_members me ON me.space_id = s.id AND me.user_id = ${user.id}
@@ -27,6 +27,7 @@ export async function GET() {
           member_limit: row.member_limit,
           member_count: Number(row.member_count),
           is_owner: row.owner_id === user.id,
+          banned: !!row.banned_at,
         };
       }
     }
