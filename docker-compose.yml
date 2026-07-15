@@ -19,6 +19,8 @@ services:
       context: .
       args:
         NPM_REGISTRY: ${NPM_REGISTRY:-https://registry.npmjs.org}
+        # 备案号是构建期固化的（NEXT_PUBLIC_*），改了 .env 里的值要 --build 重新构建才生效
+        NEXT_PUBLIC_ICP_NUMBER: ${NEXT_PUBLIC_ICP_NUMBER:-}
     restart: unless-stopped
     depends_on:
       db:

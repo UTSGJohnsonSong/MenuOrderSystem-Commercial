@@ -11,6 +11,9 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
+# NEXT_PUBLIC_* 在 next build 时固化进产物（运行期改无效），所以必须走构建参数传入
+ARG NEXT_PUBLIC_ICP_NUMBER=
+ENV NEXT_PUBLIC_ICP_NUMBER=$NEXT_PUBLIC_ICP_NUMBER
 RUN npm run build
 
 FROM node:22-alpine AS runner
