@@ -19,10 +19,17 @@ cd "$APP_DIR"
 echo "== 0. 检查 .env =="
 fail=0
 grep -q '^NEXT_PUBLIC_ICP_NUMBER=..*' .env || { echo "❌ .env 缺 NEXT_PUBLIC_ICP_NUMBER（备案号）"; fail=1; }
-grep -q '^SMS_PROVIDER=aliyun' .env       || { echo "❌ .env 里 SMS_PROVIDER 不是 aliyun"; fail=1; }
-for k in ALIYUN_ACCESS_KEY_ID ALIYUN_ACCESS_KEY_SECRET ALIYUN_SMS_SIGN_NAME ALIYUN_SMS_TEMPLATE_CODE; do
-  grep -q "^$k=..*" .env || { echo "❌ .env 缺 $k"; fail=1; }
-done
+if grep -q '^SMS_PROVIDER=tencent' .env; then
+  for k in TENCENT_SECRET_ID TENCENT_SECRET_KEY TENCENT_SMS_SDK_APP_ID TENCENT_SMS_SIGN_NAME TENCENT_SMS_TEMPLATE_ID; do
+    grep -q "^$k=..*" .env || { echo "❌ .env 缺 $k"; fail=1; }
+  done
+elif grep -q '^SMS_PROVIDER=aliyun' .env; then
+  for k in ALIYUN_ACCESS_KEY_ID ALIYUN_ACCESS_KEY_SECRET ALIYUN_SMS_SIGN_NAME ALIYUN_SMS_TEMPLATE_CODE; do
+    grep -q "^$k=..*" .env || { echo "❌ .env 缺 $k"; fail=1; }
+  done
+else
+  echo "❌ .env 里 SMS_PROVIDER 必须是 tencent 或 aliyun（真实短信通道）"; fail=1
+fi
 if grep -q '^SMS_CONSOLE_IN_PROD=1' .env; then
   echo "❌ .env 里还开着内测短信开关 SMS_CONSOLE_IN_PROD，请删除该行"; fail=1
 fi

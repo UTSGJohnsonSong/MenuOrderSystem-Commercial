@@ -13,7 +13,7 @@
 | 买域名 + 实名 | 🧑 | 半小时 + 实名审核 1 天 | ¥50~80/年 |
 | ICP 备案 | 🧑（云厂商后台引导式提交） | **2~4 周（管局审核）** | 免费 |
 | 公安备案 | 🧑（网站上线后 30 天内） | 1~2 周 | 免费 |
-| 阿里云短信签名/模板申请 | 🧑 | 1~2 天审核 | ¥0.045/条 |
+| 短信签名/模板申请（腾讯云优先） | 🧑 | 1~2 天审核 | ¥0.04~0.05/条 |
 | 部署应用（本文档第 3 节） | 我可以远程指导/写好脚本 | 1 小时 | — |
 
 > 重要：**没备案的域名在国内服务器上无法通过 80/443 端口对外服务**（云厂商会拦截）。
@@ -44,18 +44,26 @@
 4. 通过后拿到备案号（如 京ICP备2026XXXXXX号），填进 `.env` 的 `NEXT_PUBLIC_ICP_NUMBER`，会自动显示在落地页底部（法律要求）
 5. 上线后 30 天内在 beian.mps.gov.cn 补公安备案
 
-### 2.2 阿里云短信
-1. 开通「短信服务」，申请**签名**（如「今天吃什么呀」，个人可申请）和**模板**：
-   `您的验证码是${code}，5分钟内有效，请勿泄露。`
-2. 创建 RAM 子账号 AccessKey（只授权 dysmsapi），填入 `.env`：
+### 2.2 短信服务（腾讯云优先——服务器/域名/备案同账号，材料互认）
+
+**腾讯云短信**（推荐，新用户送个人 100 条试用）：
+1. 控制台开通「短信 SMS」→ 创建**应用**（拿到 SdkAppId）
+2. 国内短信 → 申请**签名**（如「今天吃什么呀」，个人验证码类可申请）和**模板**：
+   `您的验证码是{1}，5分钟内有效，请勿泄露。`
+3. 访问管理 CAM → 创建子账号（编程访问）→ 只授权 `QcloudSMSFullAccess` → 拿 SecretId/SecretKey
+4. 填入 `.env`：
    ```
-   SMS_PROVIDER=aliyun
-   ALIYUN_ACCESS_KEY_ID=...
-   ALIYUN_ACCESS_KEY_SECRET=...
-   ALIYUN_SMS_SIGN_NAME=今天吃什么呀
-   ALIYUN_SMS_TEMPLATE_CODE=SMS_XXXXXXX
+   SMS_PROVIDER=tencent
+   TENCENT_SECRET_ID=...
+   TENCENT_SECRET_KEY=...
+   TENCENT_SMS_SDK_APP_ID=1400XXXXXX
+   TENCENT_SMS_SIGN_NAME=今天吃什么呀
+   TENCENT_SMS_TEMPLATE_ID=XXXXXXX
    ```
-3. 代码已内置限流（同号 60 秒 1 条、24 小时 10 条），防止被刷短信费
+
+**阿里云短信**（备选，`SMS_PROVIDER=aliyun`）：申请签名+模板 `您的验证码是${code}，5分钟内有效，请勿泄露。`，RAM 子账号只授权 dysmsapi，填 `ALIYUN_ACCESS_KEY_ID/SECRET`、`ALIYUN_SMS_SIGN_NAME`、`ALIYUN_SMS_TEMPLATE_CODE`。
+
+代码已内置限流（同号 60 秒 1 条、24 小时 10 条），防止被刷短信费。
 
 ### 2.3 收款资质（以后再说）
 当前版本完全免费，无支付功能。以后要收费时需要个体工商户或公司执照 + 微信支付/支付宝商户号，届时付费墙代码再加（数据库已预留 `member_limit` 等字段）。
@@ -137,7 +145,7 @@ docker compose exec db psql -U menuapp   # 直接进数据库
 
 ## 5. 上线前检查清单
 
-- [ ] `.env` 里 `SMS_PROVIDER=aliyun` 且发送测试通过（console 模式在生产会直接报错，防呆）
+- [ ] `.env` 里 `SMS_PROVIDER=tencent`（或 aliyun）且发送测试通过（console 模式在生产会直接报错，防呆）
 - [ ] `DB_PASSWORD` 是随机长密码
 - [ ] HTTPS 生效（验证码接口必须走 HTTPS）
 - [ ] 落地页底部显示备案号
