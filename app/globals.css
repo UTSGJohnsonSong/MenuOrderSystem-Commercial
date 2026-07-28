@@ -23,6 +23,7 @@ html {
 
 body {
   overscroll-behavior: none;
+  /* Desktop keeps the darker frame around the 480px app column. */
   background-color: #EDE5D8;
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB",
@@ -32,6 +33,14 @@ body {
   /* Prevent iOS font size bump in landscape */
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+}
+
+/* On a phone the app column already fills the width, so the frame colour is
+   only ever seen in the strips iOS leaves above and below `100dvh` (status bar,
+   Safari toolbar). Matching it to the app surface removes that seam. CSS only —
+   deliberately not JS, so it holds even if hydration fails. */
+@media (max-width: 520px) {
+  body { background-color: #FFFAF2; }
 }
 
 /* ── Buttons & interactive ── */
@@ -49,6 +58,27 @@ input:focus,
 textarea:focus,
 select:focus {
   outline: none;
+}
+
+/* The rule above removes the UA focus ring globally. /login paints its own via
+ * React focus state; the invite-code field on /join has no such state, so it
+ * would render identically focused and unfocused — WCAG 2.4.7 fails, and on
+ * desktop (a pasted invite link) there is no keyboard to signal focus either.
+ * Same ring colour as /login so the two entry screens read as one system.
+ *
+ * These three properties live here rather than in the element's inline style
+ * on purpose: an inline style always beats a class, so a :focus rule cannot
+ * override one. Keep background/border/box-shadow out of that style attribute. */
+.ktn-code-input {
+  background: #ffffff;
+  border: 1.5px solid rgba(220, 185, 138, 0.45);
+  box-shadow: 0 4px 16px rgba(120, 80, 40, 0.06);
+}
+
+.ktn-code-input:focus {
+  background: #fffbf3;
+  border-color: transparent;
+  box-shadow: inset 0 0 0 1.5px #f5b460, 0 4px 16px rgba(120, 80, 40, 0.06);
 }
 
 input,
@@ -90,4 +120,199 @@ a {
 /* ── Selection ── */
 ::selection {
   background: rgba(245, 180, 96, 0.3);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   Entry pages (welcome → login): shared kitchen scene + steam handoff.
+   All names are prefixed `ktn-` so they cannot collide with app styles.
+
+   The transition works by handing off at peak steam density: /welcome
+   builds the steam to full cover, navigates under it, and /login mounts
+   with the steam already dense and disperses it. The cut is invisible
+   because both sides are opaque fog at the moment of the swap.
+
+   Colour rule (measured, not guessed): steam reads as steam only when it
+   is DARKER than the page. White fog on #FFFDF8 paper is below the
+   perceptual threshold (max ΔL* 2.4 even at full opacity), so the body of
+   every puff is --line-soft #E8D1AB and --paper is a small highlight only.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* Top spacing for the entry pages. `viewportFit: cover` (app/layout.tsx) lets
+   content run under the notch, so the status bar height has to be added back —
+   it is 0 in a browser tab and ~47-59px once installed to the home screen.
+   --ktn-top-base is the knob for how much air sits above the logo. */
+:root {
+  --ktn-top-base: 72px;
+  --ktn-top: max(var(--ktn-top-base), calc(env(safe-area-inset-top) + 22px));
+  --ktn-bottom: env(safe-area-inset-bottom);
+  /* Back arrows sit in the nav strip just under the status bar, the iOS
+     convention — centring them on the (large) logo pushed them oddly far down. */
+  --ktn-nav-top: calc(env(safe-area-inset-top) + 12px);
+}
+
+/* Positioning is left to the page: /welcome places it in flow so it can be
+   clipped on short screens, /login pins it to the bottom edge. */
+.ktn-scene { width: 112%; margin-left: -6%; z-index: 2; will-change: transform; }
+.ktn-scene svg { width: 100%; display: block; overflow: visible; }
+
+/* Lid: asymmetric hop (fast up, slow down) + tilt + residual bounce,
+   then 62% of the cycle at rest so it reads as simmering, not broken. */
+.ktn-lid { transform-origin: 160px 114px; }
+.ktn-idle .ktn-lid { animation: ktn-rattle 1800ms linear infinite; }
+@keyframes ktn-rattle {
+  0%    { transform: translateY(0) rotate(0); }
+  4%    { transform: translateY(-2.1px) rotate(-0.5deg); }
+  11%   { transform: translateY(0) rotate(0); }
+  13%   { transform: translateY(-0.7px) rotate(0.2deg); }
+  16%   { transform: translateY(0) rotate(0); }
+  17.5% { transform: translateY(-0.25px); }
+  19%   { transform: translateY(0); }
+  23%   { transform: translateY(-3.4px) rotate(0.9deg); }
+  30%   { transform: translateY(0) rotate(0); }
+  32%   { transform: translateY(-1.1px) rotate(-0.3deg); }
+  35%   { transform: translateY(0) rotate(0); }
+  36.5% { transform: translateY(-0.35px); }
+  38%   { transform: translateY(0); }
+  100%  { transform: translateY(0); }
+}
+
+.ktn-wisp { opacity: 0; }
+.ktn-idle .ktn-wisp { animation: ktn-wisp 4400ms ease-in-out var(--kd, 0ms) infinite; }
+@keyframes ktn-wisp {
+  0%   { opacity: 0; transform: translateY(4px) scale(0.82); }
+  22%  { opacity: 0.85; }
+  62%  { opacity: 0.45; }
+  100% { opacity: 0; transform: translateY(-26px) scale(1.06); }
+}
+
+/* Hearts drift up from the pot mouth, staggered so only one is usually
+   on screen — rising reads as steam, a crowd of them reads as stickers. */
+.ktn-heart { opacity: 0; }
+.ktn-idle .ktn-heart { animation: ktn-heart 3800ms ease-out var(--kd, 0ms) infinite; }
+@keyframes ktn-heart {
+  0%   { opacity: 0; transform: translate(var(--kx), 112px) scale(0.42); }
+  16%  { opacity: 0.9; }
+  60%  { opacity: 0.62; }
+  100% { opacity: 0; transform: translate(calc(var(--kx) + var(--kdx)), 68px) scale(1); }
+}
+
+/* Contact feedback: the rattle freezing on press is the strongest signal
+   that the tap landed, so the lid is pushed down before it launches. */
+.ktn-go .ktn-lid { animation: ktn-lidgo 340ms cubic-bezier(0.16, 1.18, 0.35, 1) forwards; }
+@keyframes ktn-lidgo {
+  0%   { transform: translateY(0) rotate(0); }
+  20%  { transform: translateY(2.2px) rotate(0); }
+  62%  { transform: translateY(-9.5px) rotate(-2.6deg); }
+  100% { transform: translateY(-6px) rotate(-1.8deg); }
+}
+.ktn-go .ktn-heart,
+.ktn-go .ktn-wisp { animation: ktn-fade 180ms linear forwards; }
+@keyframes ktn-fade { to { opacity: 0; } }
+
+.ktn-ring {
+  position: absolute; width: 74px; height: 74px;
+  margin: -37px 0 0 -37px; pointer-events: none; z-index: 6; opacity: 0;
+}
+.ktn-go .ktn-ring { animation: ktn-ring 420ms cubic-bezier(0.2, 0.7, 0.3, 1) forwards; }
+@keyframes ktn-ring {
+  0%   { opacity: 0.55; transform: scale(0.35); }
+  100% { opacity: 0; transform: scale(2.6); }
+}
+
+/* The band clips the scene so a short screen loses the window rather than the
+   counter — but during the sink that clip cuts the scene off mid-flight and it
+   looks like it vanishes and then reappears at the bottom of /login. */
+.ktn-band { overflow: hidden; }
+.ktn-go .ktn-band { overflow: visible; }
+.ktn-go .ktn-scene { animation: ktn-sink 1080ms cubic-bezier(0.22, 0.61, 0.24, 1) 140ms forwards; }
+@keyframes ktn-sink { to { transform: translateY(var(--ktn-sink, 313px)); } }
+.ktn-go .ktn-upper { animation: ktn-fade 380ms cubic-bezier(0.4, 0, 0.6, 1) 240ms forwards; }
+.ktn-go .ktn-hero { animation: ktn-hero-sink 1080ms cubic-bezier(0.22, 0.61, 0.24, 1) 120ms forwards; }
+@keyframes ktn-hero-sink { to { transform: translateY(20px); } }
+/* pointer-events too: fading to opacity 0 leaves an invisible but still
+   clickable footer, and tapping it mid-transition navigates somewhere else
+   while the handoff flag has already been written. */
+.ktn-go .ktn-out-1,
+.ktn-go .ktn-out-2,
+.ktn-go .ktn-out-3 { pointer-events: none; }
+.ktn-go .ktn-out-1 { animation: ktn-fade 200ms cubic-bezier(0.4, 0, 0.6, 1) 120ms forwards; }
+.ktn-go .ktn-out-2 { animation: ktn-fade 200ms cubic-bezier(0.4, 0, 0.6, 1) 200ms forwards; }
+.ktn-go .ktn-out-3 { animation: ktn-fade 200ms cubic-bezier(0.4, 0, 0.6, 1) 270ms forwards; }
+
+/* Full-screen base fog: a plain radial-gradient, deliberately no blur.
+   Gradient soft edges are free; a blur this large is the main cause of
+   dropped frames on mid-range Android. */
+.ktn-veil {
+  position: absolute; left: 50%; top: 56%;
+  width: 900px; height: 900px; margin: -450px 0 0 -450px;
+  border-radius: 50%; opacity: 0; pointer-events: none; z-index: 4;
+  background: radial-gradient(closest-side,
+    rgba(232, 209, 171, 0.36) 0%, rgba(232, 209, 171, 0.31) 36%,
+    rgba(232, 209, 171, 0.17) 64%, rgba(232, 209, 171, 0.05) 86%,
+    rgba(232, 209, 171, 0) 100%);
+}
+.ktn-go .ktn-veil { animation: ktn-veil-in 1300ms cubic-bezier(0.2, 0.7, 0.3, 1) 220ms forwards; }
+@keyframes ktn-veil-in {
+  0%   { opacity: 0; transform: scale(0.28) translateY(95px); }
+  60%  { opacity: 1; transform: scale(0.92) translateY(-4px); }
+  100% { opacity: 1; transform: scale(1.02) translateY(-8px); }
+}
+.ktn-land .ktn-veil { animation: ktn-veil-out 900ms cubic-bezier(0.4, 0, 0.6, 1) forwards; }
+@keyframes ktn-veil-out {
+  0%   { opacity: 1; transform: scale(1.02) translateY(-8px); }
+  100% { opacity: 0; transform: scale(1.3) translateY(-80px); }
+}
+
+.ktn-steam { position: absolute; inset: 0; z-index: 4; pointer-events: none; overflow: hidden; }
+.ktn-puff {
+  position: absolute; border-radius: 50%; opacity: 0;
+  background:
+    radial-gradient(closest-side at 62% 72%, rgba(232, 209, 171, 0.46),
+      rgba(232, 209, 171, 0.26) 52%, rgba(232, 209, 171, 0) 76%),
+    radial-gradient(closest-side at 40% 34%, rgba(255, 243, 224, 0.62),
+      rgba(255, 243, 224, 0) 72%),
+    radial-gradient(closest-side at 32% 24%, rgba(255, 253, 248, 0.55),
+      rgba(255, 253, 248, 0) 46%);
+  filter: blur(9px);
+}
+.ktn-puff.ktn-thin {
+  background:
+    radial-gradient(closest-side at 58% 68%, rgba(232, 209, 171, 0.30),
+      rgba(232, 209, 171, 0) 74%),
+    radial-gradient(closest-side at 42% 36%, rgba(255, 243, 224, 0.42),
+      rgba(255, 243, 224, 0) 70%);
+  filter: blur(12px);
+}
+.ktn-go .ktn-puff { animation: ktn-puff-in var(--kdur) cubic-bezier(0.2, 0.7, 0.3, 1) var(--kdel) forwards; }
+@keyframes ktn-puff-in {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.16) rotate(0); }
+  22%  { opacity: 1; }
+  100% { opacity: 1;
+         transform: translate(-50%, -50%) translate(var(--ktx), var(--kty))
+                    scale(var(--ksc)) rotate(var(--krt)); }
+}
+/* Landing side picks the puffs up where the outgoing page left them. */
+.ktn-land .ktn-puff { animation: ktn-puff-out 1000ms cubic-bezier(0.3, 0.1, 0.5, 1) forwards; }
+@keyframes ktn-puff-out {
+  0%   { opacity: 1;
+         transform: translate(-50%, -50%) translate(var(--ktx), var(--kty))
+                    scale(var(--ksc)) rotate(var(--krt)); }
+  100% { opacity: 0;
+         transform: translate(-50%, -50%)
+                    translate(calc(var(--ktx) * 1.3), calc(var(--kty) - 90px))
+                    scale(calc(var(--ksc) * 1.25)) rotate(var(--krt)); }
+}
+
+.ktn-land .ktn-in { opacity: 0; animation: ktn-rise 540ms cubic-bezier(0.2, 0.7, 0.3, 1) var(--kdel, 0ms) forwards; }
+@keyframes ktn-rise {
+  from { opacity: 0; transform: translateY(9px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ktn-idle .ktn-lid,
+  .ktn-idle .ktn-heart,
+  .ktn-idle .ktn-wisp { animation: none; }
+  .ktn-idle .ktn-heart { opacity: 0.75; transform: translate(var(--kx), 96px); }
+  .ktn-go *, .ktn-land * { animation-duration: 1ms !important; animation-delay: 0ms !important; }
 }

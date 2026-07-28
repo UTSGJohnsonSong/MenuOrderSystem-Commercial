@@ -730,14 +730,18 @@ export default function OrderPage() {
 
   useEffect(() => {
     if (sortedCats.length === 0 || activeCatId) return;
-    const saved = sessionStorage.getItem("fm-active-cat");
+    // sessionStorage throws when storage is blocked (WeChat in-app browser,
+    // Safari "Block All Cookies"). Remembering the last category is a nicety;
+    // taking down the whole app page for it is not.
+    let saved: string | null = null;
+    try { saved = sessionStorage.getItem("fm-active-cat"); } catch { /* storage off */ }
     const valid = saved && sortedCats.some(c => c.id === saved);
     setActiveCatId(valid ? saved! : sortedCats[0].id);
   }, [sortedCats, activeCatId]);
 
   const handleCatChange = (id: string) => {
     setActiveCatId(id);
-    sessionStorage.setItem("fm-active-cat", id);
+    try { sessionStorage.setItem("fm-active-cat", id); } catch { /* storage off */ }
   };
 
   const activeCat = sortedCats.find(c => c.id === activeCatId);
