@@ -1,0 +1,25 @@
+# Line endings.
+#
+# This repo is developed on Windows with core.autocrlf=true and deployed to Linux
+# via `git archive HEAD | ssh ... tar xzf -`. Without this file, git archive applies
+# the autocrlf filter and every shell script arrives on the server with CRLF, where
+# `set -euo pipefail\r` fails with "invalid option name" and every variable carries a
+# trailing CR. That silently breaks the nightly backup cron — verified 2026-07-28 by
+# diffing `git show HEAD:deploy/backup.sh` (LF) against `git archive HEAD` (CRLF).
+#
+# Anything the server executes or parses must be LF.
+
+* text=auto
+
+*.sh        text eol=lf
+*.conf      text eol=lf
+Dockerfile  text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+.env.example text eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.ico binary
