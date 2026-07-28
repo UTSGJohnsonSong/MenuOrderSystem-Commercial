@@ -27,10 +27,18 @@ function JoinContent() {
   // URL that no longer had a code — a dead end for the Android back button.
   const [failure, setFailure] = useState<{ code: string; message: string } | null>(null);
   const [joining, setJoining] = useState(false);
-  const [loggedIn, setLoggedIn] = useState(false);
   // null means "not looked up yet" — the phase below is derived from it rather
   // than assigned in the effect, which would be a cascading render.
-  const [preview, setPreview] = useState<{ name: string } | null>(null);
+  //
+  // Bound to its code for the same reason `failure` is, and it matters more here:
+  // going back from a preview does not remount, so a bare `{name}` stayed put.
+  // Typing a different code then rendered "TA 邀请你加入「<the previous space>」"
+  // over an enabled button that POSTs the NEW code — the user would join a space
+  // whose name they were never shown. `loggedIn` rides along so it cannot go
+  // stale independently either.
+  const [preview, setPreview] = useState<
+    { code: string; name: string; loggedIn: boolean } | null
+  >(null);
 
   useEffect(() => {
     if (!code) return;
@@ -42,19 +50,21 @@ function JoinContent() {
       if (cancelled) return;
       if (!res.ok) { setFailure({ code, message: res.d.error ?? "邀请码无效" }); return; }
       if (res.d.full) { setFailure({ code, message: "这个小厨房已经满员啦" }); return; }
-      setLoggedIn(!!me.user);
-      setPreview({ name: res.d.name });
+      setPreview({ code, name: res.d.name, loggedIn: !!me.user });
     }).catch(() => { if (!cancelled) setFailure({ code, message: "网络开小差了，请重试" }); });
     return () => { cancelled = true; };
   }, [code]);
 
   const error = failure && failure.code === code ? failure.message : "";
+  // Everything downstream reads `ok`, never `preview` — that is what keeps a
+  // result from a previous code off the screen.
+  const ok = preview && preview.code === code ? preview : null;
   const state: "input" | "loading" | "ready" | "joining" | "error" =
     !code ? "input"
       : error ? "error"
         : joining ? "joining"
-          : preview ? "ready" : "loading";
-  const spaceName = preview?.name ?? "";
+          : ok ? "ready" : "loading";
+  const spaceName = ok?.name ?? "";
 
   const rootRef = useRef<HTMLDivElement>(null);
   const codeRef = useRef<HTMLInputElement>(null);
@@ -117,7 +127,7 @@ function JoinContent() {
   };
 
   const join = async () => {
-    if (!loggedIn) {
+    if (!ok?.loggedIn) {
       router.push(`/login?code=${encodeURIComponent(code)}`);
       return;
     }
@@ -192,6 +202,7 @@ function JoinContent() {
 
           <input
             ref={codeRef}
+            className="ktn-code-input"
             value={entry}
             onChange={e => {
               setEntry(e.target.value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, CODE_LEN));
@@ -203,11 +214,12 @@ function JoinContent() {
             spellCheck={false}
             placeholder="ABC123"
             aria-label="邀请码"
+            /* background / border / box-shadow deliberately live in the
+               .ktn-code-input rule instead — an inline style outranks a class,
+               so keeping them here would make the :focus ring unreachable. */
             style={{
               marginTop: 22, width: "100%", height: 62, flex: "none",
-              background: "#FFFFFF", borderRadius: 20,
-              border: "1.5px solid rgba(220,185,138,0.45)",
-              boxShadow: "0 4px 16px rgba(120,80,40,0.06)",
+              borderRadius: 20,
               textAlign: "center", color: "#2F241D",
               // 16px minimum, or Safari zooms the page on focus.
               fontSize: "22px", fontWeight: 700, letterSpacing: "0.42em",
@@ -285,7 +297,7 @@ function JoinContent() {
               color: "#FFFFFF", boxShadow: "0 8px 20px rgba(232,153,30,0.32)", cursor: "pointer",
             }}
           >
-            {state === "joining" ? "正在加入…" : loggedIn ? "加入小厨房" : "登录并加入"}
+            {state === "joining" ? "正在加入…" : ok?.loggedIn ? "加入小厨房" : "登录并加入"}
           </button>
         </>
       )}

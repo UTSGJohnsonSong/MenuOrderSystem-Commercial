@@ -11,15 +11,35 @@ import { useSearchParams } from "next/navigation";
  */
 export const SOURCE_KEY = "fm-source";
 
+/* Fallback de-dupe for when sessionStorage is unavailable. Survives client-side
+ * navigation but not a full reload, so welcome_view can still double-count a
+ * storage-blocked visitor who reloads. That is deliberate: this is the funnel's
+ * denominator, and losing visitors entirely would overstate conversion, which is
+ * the more misleading direction. */
+let viewedThisSession = false;
+
 function Tracker() {
   const params = useSearchParams();
 
   useEffect(() => {
     const from = (params.get("from") ?? "").slice(0, 32);
-    if (from) sessionStorage.setItem(SOURCE_KEY, from);
 
-    if (!sessionStorage.getItem("fm-welcome-viewed")) {
-      sessionStorage.setItem("fm-welcome-viewed", "1");
+    /* sessionStorage throws (it does not return null) when storage is blocked —
+     * WeChat's in-app browser and Safari with "Block All Cookies". This effect
+     * runs on /welcome, so an uncaught throw here unmounts the landing page to
+     * the error boundary: no sign-up path, and the ICP number required by the
+     * filing disappears with it. Storage is best-effort; the page is not. */
+    let alreadyViewed = viewedThisSession;
+    try {
+      if (from) sessionStorage.setItem(SOURCE_KEY, from);
+      alreadyViewed = sessionStorage.getItem("fm-welcome-viewed") !== null;
+      if (!alreadyViewed) sessionStorage.setItem("fm-welcome-viewed", "1");
+    } catch {
+      /* storage off — fall back to the in-memory flag above */
+    }
+
+    if (!alreadyViewed) {
+      viewedThisSession = true;
       fetch("/api/events", {
         method: "POST",
         body: JSON.stringify({ name: "welcome_view", meta: from }),

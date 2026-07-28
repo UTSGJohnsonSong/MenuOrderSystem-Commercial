@@ -60,6 +60,27 @@ select:focus {
   outline: none;
 }
 
+/* The rule above removes the UA focus ring globally. /login paints its own via
+ * React focus state; the invite-code field on /join has no such state, so it
+ * would render identically focused and unfocused — WCAG 2.4.7 fails, and on
+ * desktop (a pasted invite link) there is no keyboard to signal focus either.
+ * Same ring colour as /login so the two entry screens read as one system.
+ *
+ * These three properties live here rather than in the element's inline style
+ * on purpose: an inline style always beats a class, so a :focus rule cannot
+ * override one. Keep background/border/box-shadow out of that style attribute. */
+.ktn-code-input {
+  background: #ffffff;
+  border: 1.5px solid rgba(220, 185, 138, 0.45);
+  box-shadow: 0 4px 16px rgba(120, 80, 40, 0.06);
+}
+
+.ktn-code-input:focus {
+  background: #fffbf3;
+  border-color: transparent;
+  box-shadow: inset 0 0 0 1.5px #f5b460, 0 4px 16px rgba(120, 80, 40, 0.06);
+}
+
 input,
 textarea,
 select {
@@ -123,7 +144,6 @@ a {
 :root {
   --ktn-top-base: 72px;
   --ktn-top: max(var(--ktn-top-base), calc(env(safe-area-inset-top) + 22px));
-  --ktn-top-tight: max(clamp(28px, 7vh, var(--ktn-top-base)), calc(env(safe-area-inset-top) + 22px));
   --ktn-bottom: env(safe-area-inset-bottom);
   /* Back arrows sit in the nav strip just under the status bar, the iOS
      convention — centring them on the (large) logo pushed them oddly far down. */
