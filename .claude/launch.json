@@ -1,0 +1,16 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "menuapp-prod",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [".next/standalone/server.js"],
+      "port": 3000,
+      "env": {
+        "AUTO_MIGRATE": "0",
+        "PORT": "3000",
+        "HOSTNAME": "0.0.0.0"
+      }
+    }
+  ]
+}
