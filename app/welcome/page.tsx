@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import SourceTracker from "@/components/SourceTracker";
+import { GUEST_COOKIE, GUEST_COOKIE_VALUE } from "@/lib/guest-shared";
 import { ContactRing, KitchenScene, SteamLayer, useEntryCanvas } from "@/components/EntryScene";
 
 /*
@@ -80,6 +81,35 @@ export default function WelcomePage() {
   }, [leaving, router]);
 
   const linkGo = (e: React.MouseEvent) => { e.preventDefault(); go(); };
+
+  /* Guest tour. The POST exists for the funnel counter in app/api/guest — the
+   * cookie is not httpOnly, so setting it here in the browser would work too.
+   * window.location rather than router.push: a full document load is what makes
+   * proxy.ts see the cookie on the very first request for "/".
+   * Ignored while the steam handoff is running: that timer already owns the
+   * navigation, and two of them racing lands the visitor on the wrong page. */
+  const [tourState, setTourState] = useState<"idle" | "busy" | "error" | "blocked">("idle");
+
+  const enterTour = async () => {
+    if (leaving || jump.current !== undefined || tourState === "busy") return;
+    setTourState("busy");
+    try {
+      const res = await fetch("/api/guest", { method: "POST" });
+      if (!res.ok) throw new Error(`guest cookie refused: ${res.status}`);
+      /* Confirm the cookie actually landed before navigating. WeChat's in-app
+       * browser and Safari's "Block All Cookies" drop it silently, and then
+       * proxy.ts bounces "/" straight back to here — an invisible loop the
+       * visitor can repeat forever. Same class of failure as commit 7d11199. */
+      if (!document.cookie.split("; ").includes(`${GUEST_COOKIE}=${GUEST_COOKIE_VALUE}`)) {
+        setTourState("blocked");
+        return;
+      }
+      window.location.href = "/";
+    } catch (e) {
+      console.error("[welcome] could not start the tour", e);
+      setTourState("error");
+    }
+  };
 
   return (
     <div
@@ -203,10 +233,27 @@ export default function WelcomePage() {
           加入小厨房
         </Link>
 
-        <p style={{ textAlign: "center", color: "#A58A72", fontSize: "0.71875rem", marginTop: "16px" }}>
-          免费使用 · 手机号登录
-        </p>
-        <p style={{ textAlign: "center", fontSize: "0.6875rem", color: "#C8A878", marginTop: "8px" }}>
+        {/* Third way in, for visitors who will not hand over a phone number to
+            something they have not seen. Deliberately the quietest of the three
+            — it leads to sample data, not to their own kitchen. No steam: the
+            transition is choreographed to land on /login specifically. */}
+        <button
+          onClick={enterTour}
+          style={{
+            height: "40px", width: "100%", marginTop: "10px",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            background: "none", border: "none", cursor: "pointer",
+            color: tourState === "idle" || tourState === "busy" ? "#A58A72" : "#C9831F",
+            fontSize: "0.8125rem", letterSpacing: "0.04em",
+          }}
+        >
+          {tourState === "busy" ? "正在打开…"
+            : tourState === "error" ? "没打开，再点一下试试"
+              : tourState === "blocked" ? "浏览器不让存 Cookie，参观模式打不开"
+                : "先随便逛逛 →"}
+        </button>
+
+        <p style={{ textAlign: "center", fontSize: "0.6875rem", color: "#C8A878", marginTop: "10px" }}>
           <Link href="/terms" style={{ color: "#C8A878" }}>用户协议</Link>
           {" · "}
           <Link href="/privacy" style={{ color: "#C8A878" }}>隐私政策</Link>

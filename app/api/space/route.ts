@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
-import { requireCurrentSpace, handleApiError, ApiError, maskPhone } from "@/lib/auth";
+import { requireCurrentSpace, handleApiError, ApiError, maskPhone, isGuestVisitor } from "@/lib/auth";
+import { guestJson, guestSpace } from "@/lib/guest";
 import { COVER_IDS, DEFAULT_COVER } from "@/lib/covers";
 
 export async function GET() {
   try {
+    if (await isGuestVisitor()) return guestJson(guestSpace());
     const { user, spaceId } = await requireCurrentSpace();
 
     const [space] = await sql<{

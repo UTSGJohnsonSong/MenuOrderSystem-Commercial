@@ -87,6 +87,13 @@ elif [ "$STAGE1" = "1" ]; then
   if grep -q '^SMS_CONSOLE_IN_PROD=1' .env; then
     echo "⚠️  短信走 console：验证码只进服务器日志，陌生用户注册不了"
     echo "   查验证码：sudo docker compose logs app | grep sms"
+    # 直登白名单（lib/sms.ts testAccountCode）只在 console 通道下生效，也就是说
+    # 它恰好在整个阶段一期间都开着。代码注释里那句"换成真实通道就自动失效"
+    # 在这个窗口期不成立，所以每次跑阶段一都把它喊出来，别让它被忘在 .env 里。
+    if grep -q '^SMS_TEST_ACCOUNTS=..*' .env; then
+      echo "⚠️  .env 里开着 SMS_TEST_ACCOUNTS 直登白名单（绕过短信验证）"
+      echo "   短信签名批下来那天，必须删掉这一行并 docker compose up -d 重启"
+    fi
     SMS_MODE=console
   else
     echo "❌ 阶段一模式要求 .env 里有 SMS_CONSOLE_IN_PROD=1，否则生产环境发验证码会直接报错"
@@ -247,10 +254,37 @@ fi
 # /api/auth/me 未登录时在 getAuthUser() 里就 return null，一条 SQL 都不发，
 # 所以上面那条 200 只证明 nginx+TLS+Next.js 活着，不证明数据库可用。
 # 而"能不能关 3000 口"是拿验收结果做门禁的，这里必须真碰一下库。
-if docker compose exec -T db pg_isready -U menuapp > /dev/null 2>&1; then
-  echo "✅ 数据库可连接"
+#
+# 不能用 pg_isready：它只探测"服务器在监听"，**认证被拒也返回 0**。
+# 最典型的中招方式是照 DEPLOY_CN.md 把 .env 的 DB_PASSWORD 换成随机长密码——
+# 卷里的密码只在 initdb 那一次生效，改 .env 无效。于是应用连不上库，
+# 而 pg_isready 一路绿灯，脚本继续去关 3000 口，留下一个登录和所有数据页
+# 全 500、又没有备用入口的站点。这里必须用真凭据跑一条真查询。
+# -h 127.0.0.1 是关键：不加会走 unix socket 的 peer/trust，绕过密码认证。
+db_pass_raw=$(sed -n 's/^DB_PASSWORD=//p' .env || true)
+db_pass=${db_pass_raw%%$'\n'*}                  # 只取第一行
+db_pass=${db_pass//[\"\'$'\r']/}         # 去掉包裹的引号和 CRLF 的 CR
+if [ -z "$db_pass" ]; then
+  echo "❌ .env 里取不到 DB_PASSWORD"
+  acc_fail=1
+elif docker compose exec -T -e PGPASSWORD="$db_pass" db psql -U menuapp -h 127.0.0.1 -d menuapp -c 'select count(*) from users' > /dev/null 2>&1; then
+  echo "✅ 数据库可连接，且 .env 的凭据能读到 users 表"
 else
-  echo "❌ 数据库 pg_isready 失败，查 docker compose logs db"
+  echo "❌ 用 .env 的 DB_PASSWORD 连不上库，或 users 表不存在"
+  echo "   常见原因：改过 .env 的 DB_PASSWORD，但 pgdata 卷里还是旧密码"
+  echo "   （改库密码要进库 ALTER USER，只改 .env 是无效的）"
+  acc_fail=1
+fi
+
+# 菜品图走 public/ 静态目录（lib/library.ts 的 img 字段 -> /library/lib-NNN.jpg）。
+# 这些文件如果没被 git add，git archive 会静默漏掉：next build 不报错、镜像照样
+# 构建、容器照样起、上面几条断言全绿——而线上每一道菜都是破图。
+# 这条断言的存在就是为了让那种情况在关掉 3000 口之前停下来。
+if curl -sfI --max-time 15 "https://$DOMAIN/library/lib-001.jpg" > /dev/null 2>&1; then
+  echo "✅ 菜品库配图已随镜像上线"
+else
+  echo "❌ https://$DOMAIN/library/lib-001.jpg 取不到——菜品图没进镜像"
+  echo "   多半是 public/library/ 没有 git add（git archive 只打包已跟踪文件）"
   acc_fail=1
 fi
 

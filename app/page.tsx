@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useStore, useCart, saveMealLog } from "@/lib/store";
 import { MenuItem, Category, MealLog } from "@/lib/types";
@@ -9,19 +9,12 @@ import { MEALS, guessMeal } from "@/lib/meals";
 import { compressImage } from "@/lib/image";
 import { uploadImage } from "@/lib/store";
 import { uid } from "@/lib/uid";
+import { GUEST_BAR_H, useGuestTour } from "@/components/GuestBar";
+import { GUEST_WRITE_MESSAGE, GUEST_WRITE_STATUS } from "@/lib/guest-shared";
 import ItemDetailModal from "@/components/ItemDetailModal";
 import CatIcon from "@/components/CatIcon";
 import ItemForm from "@/components/ItemForm";
 import CoverCropper from "@/components/CoverCropper";
-
-function greeting(): string {
-  const h = new Date().getHours();
-  if (h < 5) return "夜深啦";
-  if (h < 10) return "早上好";
-  if (h < 14) return "中午好";
-  if (h < 18) return "下午好";
-  return "晚上好";
-}
 
 interface SpaceLite { name: string; cover_preset: string; cover_image_url: string | null }
 
@@ -513,112 +506,6 @@ function CoverSheet({ current, customUrl, uploading, onPick, onUpload, onClose }
   );
 }
 
-/* ─── 「随便吃什么」随机选菜 Modal ─── */
-function RandomModal({ item, category, poolSize, onAgain, onAccept, onClose, onGoLibrary, onGoKitchen }: {
-  item: MenuItem | null;
-  category: Category | undefined;
-  poolSize: number;
-  onAgain: () => void;
-  onAccept: () => void;
-  onClose: () => void;
-  onGoLibrary: () => void;
-  onGoKitchen: () => void;
-}) {
-  return (
-    <div onClick={onClose} style={{
-      position: "fixed", inset: 0, zIndex: 60,
-      display: "flex", alignItems: "center", justifyContent: "center",
-      backgroundColor: "rgba(45,31,20,0.5)", padding: "0 28px",
-    }}>
-      <div onClick={e => e.stopPropagation()} style={{
-        width: "100%", maxWidth: "360px",
-        background: "linear-gradient(180deg, #FFFDF8 0%, #FFF7EA 100%)",
-        borderRadius: "26px", overflow: "hidden", textAlign: "center",
-      }}>
-        {item ? (
-          <>
-            <div style={{ height: "170px" }}>
-              {item.image_url ? (
-                <img src={item.image_url} alt={item.name} style={{
-                  width: "100%", height: "100%", objectFit: "cover", display: "block",
-                }} />
-              ) : (
-                <div style={{
-                  width: "100%", height: "100%",
-                  background: "linear-gradient(135deg, #FFF3E4, #FFE8CC)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                }}><CatIcon id={item.category_id} size={72} /></div>
-              )}
-            </div>
-            <div style={{ padding: "18px 20px 22px" }}>
-              <p style={{ color: "#B08A68", fontSize: "0.75rem" }}>今天就吃——</p>
-              <h2 style={{ color: "#3A2A1A", fontSize: "1.375rem", fontWeight: 800, marginTop: "4px" }}>
-                {item.name}
-              </h2>
-              {category && (
-                <p style={{
-                  color: "#B08A68", fontSize: "0.75rem", marginTop: "4px",
-                  display: "flex", alignItems: "center", justifyContent: "center", gap: "5px",
-                }}>
-                  <CatIcon id={category.id} size={16} /> {category.name}
-                  {shortIngredients(item.ingredients) ? ` · ${shortIngredients(item.ingredients)}` : ""}
-                </p>
-              )}
-              <button onClick={onAccept} style={{
-                marginTop: "18px", width: "100%", padding: "14px",
-                borderRadius: "16px", border: "none", cursor: "pointer",
-                background: "linear-gradient(180deg, #F5B460 0%, #E8991E 100%)",
-                color: "#FFFFFF", fontSize: "0.9375rem", fontWeight: 700,
-                boxShadow: "0 5px 16px rgba(232,153,30,0.38)",
-              }}>
-                就它了，加入今日菜单
-              </button>
-              {poolSize > 1 && (
-                <button onClick={onAgain} style={{
-                  marginTop: "10px", width: "100%", padding: "12px",
-                  borderRadius: "16px", cursor: "pointer",
-                  backgroundColor: "#FFFFFF", color: "#C47A2C",
-                  fontSize: "0.875rem", fontWeight: 600,
-                  border: "1.5px solid rgba(240,210,170,0.7)",
-                }}>
-                  🎲 再摇一次
-                </button>
-              )}
-            </div>
-          </>
-        ) : (
-          <div style={{ padding: "32px 24px 26px" }}>
-            <p style={{ fontSize: "2.5rem" }}>🍳</p>
-            <h2 style={{ color: "#3A2A1A", fontSize: "1.0625rem", fontWeight: 800, marginTop: "10px", lineHeight: 1.5 }}>
-              小厨房还空着
-            </h2>
-            <p style={{ color: "#9A7B5F", fontSize: "0.8125rem", marginTop: "6px", lineHeight: 1.6 }}>
-              先加几道 TA 会做的菜，<br />下次就能帮你们选啦
-            </p>
-            <button onClick={onGoLibrary} style={{
-              marginTop: "18px", width: "100%", padding: "13px",
-              borderRadius: "16px", border: "none", cursor: "pointer",
-              background: "linear-gradient(180deg, #F5B460 0%, #E8991E 100%)",
-              color: "#FFFFFF", fontSize: "0.875rem", fontWeight: 700,
-            }}>
-              去菜品库挑几道
-            </button>
-            <button onClick={onGoKitchen} style={{
-              marginTop: "10px", width: "100%", padding: "12px",
-              borderRadius: "16px", cursor: "pointer",
-              backgroundColor: "#FFFFFF", color: "#C47A2C",
-              fontSize: "0.875rem", fontWeight: 600,
-              border: "1.5px solid rgba(240,210,170,0.7)",
-            }}>
-              自己动手添加
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 /* ─── Main 点菜 Page ─── */
 export default function OrderPage() {
   const router = useRouter();
@@ -630,13 +517,12 @@ export default function OrderPage() {
   const [showSendModal, setShowSendModal] = useState(false);
   const [formItem, setFormItem] = useState<MenuItem | null>(null);
   const [showForm, setShowForm] = useState(false);
-  const [showRandom, setShowRandom] = useState(false);
-  const [randomItem, setRandomItem] = useState<MenuItem | null>(null);
   const [space, setSpace] = useState<SpaceLite | null>(null);
   const [showCoverSheet, setShowCoverSheet] = useState(false);
   const [showCoverBtn, setShowCoverBtn] = useState(false); // 点封面才浮现的换封面按钮
   const [uploadingCover, setUploadingCover] = useState(false);
   const [toast, setToast] = useState("");
+  const guest = useGuestTour();
 
   // 换封面按钮浮现几秒后自动藏起来，保持封面干净
   useEffect(() => {
@@ -673,7 +559,11 @@ export default function OrderPage() {
       });
       if (!res.ok) {
         setSpace(prev);
-        showToast(res.status === 403 ? "这个小厨房暂时不能这样改哦" : "封面暂时没换成功，等会儿再试试～");
+        showToast(
+          res.status === 403 ? "这个小厨房暂时不能这样改哦"
+            : res.status === GUEST_WRITE_STATUS ? GUEST_WRITE_MESSAGE
+              : "封面暂时没换成功，等会儿再试试～"
+        );
       }
     } catch {
       setSpace(prev);
@@ -702,26 +592,16 @@ export default function OrderPage() {
       setCropSrc(null);
       setShowCoverSheet(false);
       showToast("封面换好啦 ✓");
-    } catch {
-      showToast("封面暂时没换成功，等会儿再试试～");
+    } catch (e) {
+      // The upload itself is what a guest hits first, and it carries the tour
+      // message; the generic copy would invite them to retry something that can
+      // never succeed. `throw new Error()` below has no message, so a failed
+      // PATCH still falls back to the generic line.
+      showToast(e instanceof Error && e.message ? e.message : "封面暂时没换成功，等会儿再试试～");
     } finally {
       setUploadingCover(false);
     }
   };
-
-  // 随机池：当前小厨房里所有可点的菜（useStore 的数据本身就只含本空间，归档的菜接口层已排除）
-  const randomPool = useMemo(() => items.filter(i => i.is_active), [items]);
-
-  const rollRandom = () => {
-    if (randomPool.length === 0) { setRandomItem(null); return; }
-    // 连摇不出重复的（只有一道菜时除外）
-    const candidates = randomPool.length > 1 && randomItem
-      ? randomPool.filter(i => i.id !== randomItem.id)
-      : randomPool;
-    setRandomItem(candidates[Math.floor(Math.random() * candidates.length)]);
-  };
-
-  const openRandom = () => { setRandomItem(null); setShowRandom(true); rollRandom(); };
 
   const sortedCats = useMemo(
     () => [...categories].sort((a, b) => a.sort_order - b.sort_order),
@@ -746,13 +626,26 @@ export default function OrderPage() {
 
   const activeCat = sortedCats.find(c => c.id === activeCatId);
 
+  /* 换分类时把菜单列表滚回顶部。不做的话，从「早餐」翻到一半点「米饭」，
+   * 新列表会停在同一个滚动位置——短的分类甚至直接落到空白区，看着像没内容。
+   * 放在 effect 里而不是点击回调里：以后不管从哪条路改到 activeCatId 都能覆盖到。 */
+  const listRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (listRef.current) listRef.current.scrollTop = 0;
+  }, [activeCatId]);
+
   const visibleItems = useMemo(() => {
     return items.filter(i => i.category_id === activeCatId && i.is_active)
       .sort((a, b) => a.sort_order - b.sort_order);
   }, [items, activeCatId]);
 
   const detailCat = categories.find(c => c.id === selectedItem?.category_id);
-  const navH = "calc(56px + env(safe-area-inset-bottom))";
+  /* The tour bar sits between the page and the nav, so it counts as bottom
+   * furniture: folding it into navH keeps every offset measured off navH clear
+   * of it — page height, cart button, toast — without repeating the value. */
+  const navH = guest
+    ? `calc(56px + env(safe-area-inset-bottom) + ${GUEST_BAR_H})`
+    : "calc(56px + env(safe-area-inset-bottom))";
 
   return (
     <div style={{
@@ -827,12 +720,9 @@ export default function OrderPage() {
             </button>
             {/* 文案 */}
             <div style={{ position: "absolute", left: "20px", right: "20px", bottom: "18px", zIndex: 1 }}>
-              <p style={{ color: subColor, fontSize: "0.8125rem", fontWeight: 500 }}>
-                {greeting()}，欢迎回到
-              </p>
               <h1 style={{
                 color: textColor, fontSize: "1.75rem", fontWeight: 800,
-                marginTop: "2px", lineHeight: 1.25,
+                lineHeight: 1.25,
                 overflow: "hidden", display: "-webkit-box",
                 WebkitLineClamp: 2, WebkitBoxOrient: "vertical",
                 textShadow: dark ? "0 1px 8px rgba(0,0,0,0.35)" : "0 1px 8px rgba(255,255,255,0.5)",
@@ -851,7 +741,7 @@ export default function OrderPage() {
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
         <Sidebar categories={sortedCats} activeId={activeCatId} onChange={handleCatChange} />
 
-        <div style={{ flex: 1, overflowY: "auto" }}>
+        <div ref={listRef} style={{ flex: 1, overflowY: "auto" }}>
           {/* Section title */}
           <div style={{ padding: "16px 16px 10px" }}>
             <p style={{
@@ -914,26 +804,6 @@ export default function OrderPage() {
         </div>
       </div>
 
-      {/* ── 「随便吃什么」floating button ── */}
-      <button
-        onClick={openRandom}
-        style={{
-          position: "fixed",
-          bottom: `calc(${navH} + 22px)`,
-          left: "16px",
-          zIndex: 40,
-          padding: "12px 18px",
-          borderRadius: "999px",
-          border: "none", cursor: "pointer",
-          background: "linear-gradient(180deg, #FFFDF8 0%, #FFF1DD 100%)",
-          color: "#C47A2C", fontSize: "0.875rem", fontWeight: 700,
-          display: "flex", alignItems: "center", gap: "6px",
-          boxShadow: "0 6px 18px rgba(166,112,58,0.28)",
-        }}
-      >
-        <span style={{ fontSize: "1.05rem" }}>🎲</span> 随便吃什么
-      </button>
-
       {/* ── Floating cart button ── */}
       {totalItems > 0 && (
         <button
@@ -975,7 +845,11 @@ export default function OrderPage() {
         onDecrease={() => { if (selectedItem) decreaseFromCart(selectedItem.id); }}
         onClose={() => setSelectedItem(null)}
         onEdit={item => { setFormItem(item); setShowForm(true); }}
-        onDelete={item => { deleteItem(item.id); setSelectedItem(null); }}
+        onDelete={item => {
+          // Rejects when the server refuses (tour mode, expired session, offline)
+          deleteItem(item.id).catch(e => showToast(e.message));
+          setSelectedItem(null);
+        }}
       />
 
       {showSendModal && (
@@ -999,8 +873,10 @@ export default function OrderPage() {
           item={formItem}
           categories={categories}
           existingItems={items}
-          onSave={item => {
-            formItem ? updateItem(item) : addItem(item);
+          onSave={async item => {
+            // Awaited on purpose: a rejection must reach ItemForm's error line
+            // instead of closing the form as if the dish had been saved.
+            await (formItem ? updateItem(item) : addItem(item));
             setShowForm(false); setFormItem(null);
           }}
           onCancel={() => { setShowForm(false); setFormItem(null); }}
@@ -1035,23 +911,6 @@ export default function OrderPage() {
           padding: "10px 20px", borderRadius: "999px",
           fontSize: "0.8125rem", whiteSpace: "nowrap",
         }}>{toast}</div>
-      )}
-
-      {showRandom && (
-        <RandomModal
-          item={randomItem}
-          category={categories.find(c => c.id === randomItem?.category_id)}
-          poolSize={randomPool.length}
-          onAgain={rollRandom}
-          onAccept={() => {
-            const cat = categories.find(c => c.id === randomItem?.category_id);
-            if (randomItem && cat) addToCart(randomItem, cat);
-            setShowRandom(false);
-          }}
-          onClose={() => setShowRandom(false)}
-          onGoLibrary={() => router.push("/chufang/library")}
-          onGoKitchen={() => router.push("/chufang")}
-        />
       )}
     </div>
   );

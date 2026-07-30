@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
-import { LIBRARY_DISHES, LIBRARY_CATS, searchLibrary, LibraryDish } from "@/lib/library";
+import { GUEST_BAR_H, useGuestTour } from "@/components/GuestBar";
+import { LIBRARY_DISHES, LIBRARY_CATS, searchLibrary, libraryImageUrl, libraryThumbUrl, LibraryDish } from "@/lib/library";
 import { uid } from "@/lib/uid";
 
 export default function LibraryPage() {
@@ -17,23 +18,46 @@ export default function LibraryPage() {
   const [addedNames, setAddedNames] = useState<Set<string>>(new Set());
   // 管理员配的库菜图片（用户只读），加菜时一并复制到自己的菜单
   const [libImages, setLibImages] = useState<Record<string, string>>({});
+  const guest = useGuestTour();
 
   useEffect(() => {
+    // Skipped on the tour: this endpoint is requireUser(), so a guest would
+    // fire a 401 that looks like breakage to whoever debugs next. For everyone
+    // else a failure is logged rather than swallowed — otherwise admin-uploaded
+    // covers silently not showing up has no trail at all.
+    if (guest) return;
     fetch("/api/library/images")
-      .then(r => r.json())
+      .then(r => r.ok ? r.json() : Promise.reject(new Error(`library images ${r.status}`)))
       .then(d => setLibImages(d.images ?? {}))
-      .catch(() => {});
-  }, []);
+      .catch(e => console.error("[library] images unavailable", e));
+  }, [guest]);
 
-  const navH = "calc(56px + env(safe-area-inset-bottom))";
+  const navH = guest
+    ? `calc(56px + env(safe-area-inset-bottom) + ${GUEST_BAR_H})`
+    : "calc(56px + env(safe-area-inset-bottom))";
 
   // 已在菜单里的菜（按菜名判断），加号变成「已加入」
   const existingNames = useMemo(() => new Set(items.map(i => i.name)), [items]);
   const isAdded = (d: LibraryDish) => existingNames.has(d.name) || addedNames.has(d.name);
 
+  /* Admin-uploaded covers (library_images) win over the bundled illustration —
+   * that is the whole point of the admin screen. Falls back to null so the row
+   * renders without a thumbnail rather than a broken image. */
+  const coverOf = (dish: LibraryDish) => libImages[dish.name] ?? libraryImageUrl(dish);
+
+  /* 列表里的 52x52 用缩略图。管理员自配的图没有缩略版，只能原样用。 */
+  const thumbOf = (dish: LibraryDish) => libImages[dish.name] ?? libraryThumbUrl(dish);
+
   const results = useMemo(() => {
     const searched = searchLibrary(query);
     return catFilter === "all" ? searched : searched.filter(d => d.cat === catFilter);
+  }, [query, catFilter]);
+
+  /* 同上：切分类或改搜索词之后，结果列表要回到第一条。
+   * 416 道菜的列表里，停在原位置等于让人对着一段不相干的内容发愣。 */
+  const resultsRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (resultsRef.current) resultsRef.current.scrollTop = 0;
   }, [query, catFilter]);
 
   const sortedCats = [...categories].sort((a, b) => a.sort_order - b.sort_order);
@@ -48,7 +72,7 @@ export default function LibraryPage() {
         id: uid(), // 服务端会重新生成
         category_id: categoryId,
         name: dish.name,
-        image_url: libImages[dish.name] ?? "",
+        image_url: coverOf(dish) ?? "",
         ingredients: dish.ingredients,
         instructions: dish.instructions,
         notes: "",
@@ -75,18 +99,21 @@ export default function LibraryPage() {
             ← 厨房
           </button>
           <h1 style={{ color: "#3A2A1A", fontSize: "1.125rem", fontWeight: 700, flex: 1 }}>菜品库</h1>
-          <span style={{ color: "#C4A484", fontSize: "0.75rem" }}>{LIBRARY_DISHES.length} 道家常菜</span>
+          <span style={{ color: "#C4A484", fontSize: "0.75rem" }}>{LIBRARY_DISHES.length} 道菜</span>
         </div>
 
         <input
           value={query}
           onChange={e => setQuery(e.target.value)}
-          placeholder="搜菜名或食材，比如：鸡翅、肉、豆腐…"
+          placeholder="搜菜名或食材"
           style={{
             width: "100%", marginTop: "14px", padding: "12px 16px",
             borderRadius: "999px", border: "1px solid #FFE2BD",
             backgroundColor: "#FFFFFF", color: "#3A2A1A",
-            fontSize: "0.875rem", outline: "none",
+            // 16px, not 0.875rem: iOS zooms the whole page when a focused input
+            // is under 16px, which is the "page drifts" report. Same rule as
+            // .ktn-code-input in globals.css.
+            fontSize: "16px", outline: "none",
           }}
         />
 
@@ -107,7 +134,7 @@ export default function LibraryPage() {
       </div>
 
       {/* 结果列表（滚动区） */}
-      <div style={{ flex: 1, overflowY: "auto", overscrollBehavior: "contain", padding: "0 12px 24px" }}>
+      <div ref={resultsRef} style={{ flex: 1, overflowY: "auto", overscrollBehavior: "contain", padding: "0 12px 24px" }}>
         {results.length === 0 ? (
           <div style={{ textAlign: "center", padding: "60px 20px" }}>
             <p style={{ fontSize: "2rem", marginBottom: "12px" }}>🍳</p>
@@ -132,10 +159,15 @@ export default function LibraryPage() {
                 padding: "12px 14px", marginBottom: "8px",
                 boxShadow: "0 1px 6px rgba(58,42,26,0.06)",
               }}>
-                {libImages[dish.name] && (
-                  <img src={libImages[dish.name]} alt={dish.name} loading="lazy" style={{
+                {thumbOf(dish) ? (
+                  <img src={thumbOf(dish)!} alt={dish.name} loading="lazy" style={{
                     width: "52px", height: "52px", borderRadius: "12px",
                     objectFit: "cover", flexShrink: 0,
+                  }} />
+                ) : (
+                  <div style={{
+                    width: "52px", height: "52px", borderRadius: "12px", flexShrink: 0,
+                    background: "linear-gradient(135deg, #FFE8CC, #FFF3E0)",
                   }} />
                 )}
                 <div style={{ flex: 1, minWidth: 0 }}>

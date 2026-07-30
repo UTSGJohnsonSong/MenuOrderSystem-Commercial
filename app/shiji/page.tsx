@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useMealLog } from "@/lib/store";
+import { GUEST_BAR_H, useGuestTour } from "@/components/GuestBar";
 import { MealLog } from "@/lib/types";
 import { mealInfo, mealOrder } from "@/lib/meals";
 
@@ -142,6 +143,7 @@ function monthLabel(key: string) {
 
 export default function ShijiPage() {
   const { logs, deleteLog } = useMealLog();
+  const guest = useGuestTour();
 
   const today = new Date().toISOString().split("T")[0];
   const hasToday = logs.some(l => l.date === today);
@@ -166,7 +168,9 @@ export default function ShijiPage() {
     }
   }
 
-  const navH = "calc(56px + env(safe-area-inset-bottom))";
+  const navH = guest
+    ? `calc(56px + env(safe-area-inset-bottom) + ${GUEST_BAR_H})`
+    : "calc(56px + env(safe-area-inset-bottom))";
 
   return (
     <div style={{
@@ -214,7 +218,7 @@ export default function ShijiPage() {
                   🗓 接下来的安排
                 </p>
                 {upcoming.map(log => (
-                  <LogCard key={log.id} log={log} onDelete={() => deleteLog(log.id)} />
+                  <LogCard key={log.id} log={log} onDelete={() => deleteLog(log.id).catch(e => window.alert(e.message))} />
                 ))}
               </div>
             )}
@@ -238,7 +242,7 @@ export default function ShijiPage() {
                   letterSpacing: "0.06em", padding: "8px 4px 6px",
                 }}>{monthLabel(key)}</p>
                 {monthLogs.map(log => (
-                  <LogCard key={log.id} log={log} onDelete={() => deleteLog(log.id)} />
+                  <LogCard key={log.id} log={log} onDelete={() => deleteLog(log.id).catch(e => window.alert(e.message))} />
                 ))}
               </div>
             ))}

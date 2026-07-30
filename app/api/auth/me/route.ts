@@ -1,9 +1,14 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
-import { getAuthUser, handleApiError, maskPhone } from "@/lib/auth";
+import { getAuthUser, handleApiError, maskPhone, isGuestVisitor } from "@/lib/auth";
+import { guestJson } from "@/lib/guest";
 
 export async function GET() {
   try {
+    // Unreachable today — the only two callers are /join and /onboarding, and
+    // proxy.ts keeps guests off both. Here so that a guest-visible page added
+    // later cannot mistake a tour visitor for a signed-in user.
+    if (await isGuestVisitor()) return guestJson({ user: null, space: null, guest: true });
     const user = await getAuthUser();
     if (!user) return NextResponse.json({ user: null });
 

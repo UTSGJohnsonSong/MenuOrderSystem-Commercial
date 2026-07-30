@@ -2,6 +2,16 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Category, MenuItem, CartItem, MealLog } from "./types";
+import { GUEST_WRITE_MESSAGE, GUEST_WRITE_STATUS } from "./guest-shared";
+
+/* A refused delete has to say WHY. These paths use raw fetch rather than
+ * apiFetch (no redirect on 401/403), so without this the row silently bounces
+ * back and the tour's "只能看看" copy never reaches the screen. */
+function deleteFailureMessage(res: Response | null, fallback: string): string {
+  if (res?.status === GUEST_WRITE_STATUS) return GUEST_WRITE_MESSAGE;
+  if (res?.status === 401) return "登录已经过期了，重新登录一下？";
+  return fallback;
+}
 
 /* 统一处理登录态失效：401 回落地页，403（没有空间）去 onboarding */
 async function apiFetch<T>(url: string, init?: RequestInit): Promise<T> {
@@ -26,8 +36,12 @@ export function useStore() {
 
   useEffect(() => {
     const fetchAll = () => {
-      apiFetch<Category[]>("/api/categories").then(setCategories).catch(() => {});
-      apiFetch<MenuItem[]>("/api/items").then(setItems).catch(() => {});
+      // Logged, not swallowed: a failed read renders as an empty kitchen, which
+      // is indistinguishable from a genuinely empty one without this line.
+      apiFetch<Category[]>("/api/categories").then(setCategories)
+        .catch(e => console.error("[store] categories unavailable", e));
+      apiFetch<MenuItem[]>("/api/items").then(setItems)
+        .catch(e => console.error("[store] items unavailable", e));
     };
     fetchAll();
 
@@ -46,9 +60,35 @@ export function useStore() {
     setItems(prev => prev.map(i => i.id === saved.id ? saved : i));
   };
 
+  /* Optimistic removal is undone when the server refuses (tour mode, banned
+   * space, expired session, offline). Without the rollback a rejected delete
+   * looks like it worked until the next refresh — and this list only refetches
+   * on refocus. Rejects on failure so the caller can explain itself; every call
+   * site must catch.
+   *
+   * .catch(() => null) is load-bearing: fetch REJECTS when the network drops, it
+   * does not resolve with !res.ok, so the offline case — the likeliest one on a
+   * phone — would otherwise skip the rollback entirely. */
   const deleteItem = async (id: string) => {
+    const at = items.findIndex(i => i.id === id);
+    const removed = at === -1 ? undefined : items[at];
     setItems(prev => prev.filter(i => i.id !== id));
-    await fetch(`/api/items/${id}`, { method: "DELETE" });
+
+    const res = await fetch(`/api/items/${id}`, { method: "DELETE" }).catch(() => null);
+    if (res?.ok) return;
+
+    if (removed) {
+      // Back where it was, not appended: sort_order is heavily duplicated
+      // (lib/data.ts has eight items at 1), so re-sorting would drop the dish
+      // to the bottom of its category and read as "a different row moved".
+      setItems(prev => {
+        if (prev.some(i => i.id === id)) return prev;
+        const next = [...prev];
+        next.splice(Math.min(at, next.length), 0, removed);
+        return next;
+      });
+    }
+    throw new Error(deleteFailureMessage(res, "没删掉，再试一次？"));
   };
 
   return { categories, items, addItem, updateItem, deleteItem };
@@ -170,7 +210,7 @@ export function useMealLog() {
       apiFetch<MealLog[]>("/api/logs").then(next => {
         // 数据没变化时不更新 state，避免每次轮询都触发重渲染
         setLogs(prev => JSON.stringify(prev) === JSON.stringify(next) ? prev : next);
-      }).catch(() => {});
+      }).catch(e => console.error("[store] logs unavailable", e));
     };
     fetchLogs();
 
@@ -195,9 +235,28 @@ export function useMealLog() {
     });
   };
 
+  // Same rollback and the same offline caveat as deleteItem; the 5s poll would
+  // eventually undo it, but a row that reappears seconds later with no
+  // explanation reads as a glitch rather than a refusal. Rejects on failure —
+  // callers must catch. Re-inserted at its old index; /shiji re-sorts by date
+  // anyway, but the guard against the concurrent poll needs the index case too.
   const deleteLog = async (id: string) => {
+    const at = logs.findIndex(l => l.id === id);
+    const removed = at === -1 ? undefined : logs[at];
     setLogs(prev => prev.filter(l => l.id !== id));
-    await fetch(`/api/logs/${id}`, { method: "DELETE" });
+
+    const res = await fetch(`/api/logs/${id}`, { method: "DELETE" }).catch(() => null);
+    if (res?.ok) return;
+
+    if (removed) {
+      setLogs(prev => {
+        if (prev.some(l => l.id === id)) return prev;
+        const next = [...prev];
+        next.splice(Math.min(at, next.length), 0, removed);
+        return next;
+      });
+    }
+    throw new Error(deleteFailureMessage(res, "没删掉，再试一次？"));
   };
 
   return { logs, saveLog, deleteLog };

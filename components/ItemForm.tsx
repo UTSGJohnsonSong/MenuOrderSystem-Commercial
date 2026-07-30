@@ -10,7 +10,11 @@ interface Props {
   item: MenuItem | null;
   categories: Category[];
   existingItems: MenuItem[];
-  onSave: (item: MenuItem) => void;
+  /* May return a promise. If it rejects, the form stays open and shows the
+   * message — that is how the tour's "只能看看" copy reaches the screen, and how
+   * a failed save stops looking like a successful one. Call sites must therefore
+   * close the form only AFTER awaiting their write. */
+  onSave: (item: MenuItem) => void | Promise<unknown>;
   onCancel: () => void;
 }
 
@@ -55,30 +59,42 @@ export default function ItemForm({ item, categories, existingItems, onSave, onCa
     }
   };
 
-  const handleSave = () => {
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    if (saving) return; // a double tap used to mean two dishes
     if (!name.trim()) { setError("菜名不能为空"); return; }
 
     const now = new Date().toISOString();
     const categoryItems = existingItems.filter(i => i.category_id === categoryId);
 
-    onSave({
-      id: item?.id ?? uid(),
-      category_id: categoryId,
-      name: name.trim(),
-      image_url: imageUrl.trim(),
-      ingredients: ingredients.trim(),
-      instructions: instructions.trim(),
-      notes: notes.trim(),
-      is_active: item?.is_active ?? true,
-      sort_order: item?.sort_order ?? categoryItems.length + 1,
-      created_at: item?.created_at ?? now,
-      updated_at: now,
-    });
+    setError("");
+    setSaving(true);
+    try {
+      await onSave({
+        id: item?.id ?? uid(),
+        category_id: categoryId,
+        name: name.trim(),
+        image_url: imageUrl.trim(),
+        ingredients: ingredients.trim(),
+        instructions: instructions.trim(),
+        notes: notes.trim(),
+        is_active: item?.is_active ?? true,
+        sort_order: item?.sort_order ?? categoryItems.length + 1,
+        created_at: item?.created_at ?? now,
+        updated_at: now,
+      });
+    } catch (e) {
+      setError(e instanceof Error && e.message ? e.message : "保存失败，请重试");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const inputStyle = {
     border: "1px solid #FFE2BD", borderRadius: "1rem",
-    padding: "12px 16px", fontSize: "0.875rem", width: "100%",
+    // 16px: under that, iOS zooms the page when the field takes focus
+    padding: "12px 16px", fontSize: "16px", width: "100%",
     backgroundColor: "#ffffff", color: "#3D2C22", outline: "none",
   };
   const labelStyle = {
@@ -95,7 +111,10 @@ export default function ItemForm({ item, categories, existingItems, onSave, onCa
         <h2 className="text-base font-semibold" style={{ color: "#3D2C22" }}>
           {isEdit ? "编辑菜品" : "添加菜品"}
         </h2>
-        <button onClick={handleSave} className="text-sm font-medium" style={{ color: "#FF9F43" }}>保存</button>
+        <button onClick={handleSave} disabled={saving} className="text-sm font-medium"
+          style={{ color: saving ? "#E0C9A6" : "#FF9F43" }}>
+          {saving ? "保存中…" : "保存"}
+        </button>
       </div>
 
       <div className="p-4 flex flex-col gap-4 pb-12">

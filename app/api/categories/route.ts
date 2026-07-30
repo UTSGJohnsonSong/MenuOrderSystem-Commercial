@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
-import { requireCurrentSpace, handleApiError, ApiError } from "@/lib/auth";
+import { requireCurrentSpace, handleApiError, ApiError, isGuestVisitor } from "@/lib/auth";
+import { guestCategories, guestJson } from "@/lib/guest";
 import { PRESET_MAP } from "@/lib/categories";
 
 export async function GET() {
   try {
+    if (await isGuestVisitor()) return guestJson(guestCategories());
     const { spaceId } = await requireCurrentSpace();
     const rows = await sql`
       SELECT id, name, sort_order FROM categories

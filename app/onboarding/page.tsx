@@ -81,7 +81,7 @@ export default function OnboardingPage() {
         你们的小厨房已经准备好啦
       </h1>
       <p style={{ color: "#9A7B5F", fontSize: "0.9375rem", marginTop: "10px", lineHeight: 1.6 }}>
-        我们帮你放好了一些家常菜谱，<br />现在把 TA 拉进来才好玩。
+        我们先帮你放了一些菜，<br />现在把 TA 拉进来才好玩。
       </p>
 
       <div style={{

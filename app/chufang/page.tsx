@@ -3,7 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useStore, useCart } from "@/lib/store";
+import { GUEST_BAR_H, useGuestTour } from "@/components/GuestBar";
 import ItemForm from "@/components/ItemForm";
+import { LIBRARY_DISHES } from "@/lib/library";
 import { MenuItem } from "@/lib/types";
 
 function EntryCard({ label, desc, color, onClick }: {
@@ -38,8 +40,11 @@ export default function ChufangPage() {
   const [view, setView] = useState<"home" | "manage">("home");
   const [formItem, setFormItem] = useState<MenuItem | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const guest = useGuestTour();
 
-  const navH = "calc(56px + env(safe-area-inset-bottom))";
+  const navH = guest
+    ? `calc(56px + env(safe-area-inset-bottom) + ${GUEST_BAR_H})`
+    : "calc(56px + env(safe-area-inset-bottom))";
 
   const sortedCats = [...categories].sort((a, b) => a.sort_order - b.sort_order);
   const grouped = sortedCats.map(cat => ({
@@ -100,7 +105,11 @@ export default function ChufangPage() {
                     <button onClick={() => { setFormItem(item); setShowForm(true); }}
                       style={{ color: "#F2A24A", fontSize: "0.8125rem", fontWeight: 500 }}>编辑</button>
                     <button onClick={() => {
-                      if (window.confirm(`删除「${item.name}」？`)) deleteItem(item.id);
+                      if (window.confirm(`删除「${item.name}」？`)) {
+                        // deleteItem rejects when the server refuses; without
+                        // this the row just bounces back unexplained.
+                        deleteItem(item.id).catch(e => window.alert(e.message));
+                      }
                     }} style={{ color: "#E07070", fontSize: "0.8125rem" }}>删除</button>
                   </div>
                 </div>
@@ -114,8 +123,10 @@ export default function ChufangPage() {
             item={formItem}
             categories={categories}
             existingItems={items}
-            onSave={item => {
-              formItem ? updateItem(item) : addItem(item);
+            onSave={async item => {
+              // Awaited: a rejection must reach ItemForm's error line rather
+              // than closing the form as if the dish had been saved.
+              await (formItem ? updateItem(item) : addItem(item));
               setShowForm(false); setFormItem(null);
             }}
             onCancel={() => { setShowForm(false); setFormItem(null); }}
@@ -151,7 +162,8 @@ export default function ChufangPage() {
               菜品库
             </span>
             <span style={{ display: "block", color: "rgba(255,255,255,0.9)", fontSize: "0.75rem", marginTop: "2px" }}>
-              300 道家常菜，搜一搜直接加进菜单
+              {/* 数字从数据来，不写死——上一版写着 300 时库里已经 416 道了 */}
+              {LIBRARY_DISHES.length} 道菜，搜一搜直接加进菜单
             </span>
           </span>
           <span style={{ color: "#FFFFFF", fontSize: "1.125rem" }}>→</span>
@@ -160,7 +172,7 @@ export default function ChufangPage() {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
           <EntryCard
             label="添加菜谱"
-            desc="新增一道家常菜"
+            desc="新增一道菜"
             color="#FFE3BF"
             onClick={() => { setFormItem(null); setShowForm(true); }}
           />
@@ -170,18 +182,24 @@ export default function ChufangPage() {
             color="#FFD6D6"
             onClick={() => setView("manage")}
           />
-          <EntryCard
-            label="邀请 TA"
-            desc="一起点菜一起吃饭"
-            color="#D6EAD6"
-            onClick={() => router.push("/settings")}
-          />
-          <EntryCard
-            label="小厨房设置"
-            desc="名字、邀请码、成员"
-            color="#D6E0FF"
-            onClick={() => router.push("/settings")}
-          />
+          {/* Hidden on the tour: /settings is behind the session gate, so both
+              of these would just bounce the visitor out to /welcome. */}
+          {!guest && (
+            <>
+              <EntryCard
+                label="邀请 TA"
+                desc="一起点菜一起吃饭"
+                color="#D6EAD6"
+                onClick={() => router.push("/settings")}
+              />
+              <EntryCard
+                label="小厨房设置"
+                desc="名字、邀请码、成员"
+                color="#D6E0FF"
+                onClick={() => router.push("/settings")}
+              />
+            </>
+          )}
         </div>
 
         {/* Stats */}
@@ -212,8 +230,9 @@ export default function ChufangPage() {
           item={formItem}
           categories={categories}
           existingItems={items}
-          onSave={item => {
-            formItem ? updateItem(item) : addItem(item);
+          onSave={async item => {
+            // Awaited: see the note on the other ItemForm mount in this file.
+            await (formItem ? updateItem(item) : addItem(item));
             setShowForm(false); setFormItem(null);
           }}
           onCancel={() => { setShowForm(false); setFormItem(null); }}

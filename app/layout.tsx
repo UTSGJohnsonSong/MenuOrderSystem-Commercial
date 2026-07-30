@@ -1,12 +1,19 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import BottomNav from "@/components/BottomNav";
+import GuestBar from "@/components/GuestBar";
 import SwRegister from "@/components/SwRegister";
 
 /* ── Viewport (separate export as required by Next.js 14+) ── */
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  // 双指缩放会把这个固定 480px 宽的布局拖歪，而且 fixed 定位的底栏会跟着漂。
+  // 注意：iOS Safari 标签页里 Apple 出于无障碍会忽略这两个字段（加到主屏后的
+  // PWA 会遵守）。真正治「聚焦输入框时页面自己放大」的是把输入框字号设到
+  // >= 16px —— 全站输入框都已经这么做了，不要再改回 0.875rem。
+  maximumScale: 1,
+  userScalable: false,
   viewportFit: "cover",          // Extend behind iPhone notch / home bar
   themeColor: "#F5B460",         // Matches tab bar when app is active
   // 键盘弹出时浮在页面上方，而不是压缩布局视口——否则安卓上
@@ -64,6 +71,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         >
           {children}
+          <GuestBar />
           <BottomNav />
         </div>
       </body>

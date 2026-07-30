@@ -34,6 +34,32 @@ export function isConsoleProvider() {
   return (process.env.SMS_PROVIDER ?? "console") === "console";
 }
 
+/*
+ * 内测直登白名单：SMS_TEST_ACCOUNTS="1XXXXXXXXXX:XXXXXX"（多对用逗号分隔）
+ *
+ * ⚠️ 这行注释里绝对不要写真实号码和真实的码——本仓库是 PUBLIC 的。
+ *    码要现取 6 位随机数，禁用 000000 / 123456 / 生日这类。
+ *
+ * 短信签名还没批下来的窗口期，让指定的自己人用固定码直接登录。
+ * 这是一个绕过短信验证的口子，所以做了三重收窄：
+ *   1. 环境变量不存在 = 这个功能整个不存在（默认关闭，不是默认开启）
+ *   2. 只认完全相等的号码，没有通配符、没有前缀匹配、没有"任意号码"
+ *   3. 真实短信通道一接通（SMS_PROVIDER=tencent/aliyun）本函数直接返回 null，
+ *      口子自动关上——和 /api/admin/sms-codes 一样，不依赖任何人记得去删
+ *
+ * 命中时调用方会打一条 warn 日志，方便事后审计谁用过。
+ */
+export function testAccountCode(phone: string): string | null {
+  if (!isConsoleProvider()) return null;
+  const raw = process.env.SMS_TEST_ACCOUNTS;
+  if (!raw) return null;
+  for (const pair of raw.split(",")) {
+    const [p, c] = pair.split(":").map(x => x.trim());
+    if (p === phone && /^\d{6}$/.test(c ?? "")) return c;
+  }
+  return null;
+}
+
 /* ── 腾讯云短信（SendSms，TC3-HMAC-SHA256 签名，无 SDK 依赖） ── */
 
 const sha256hex = (s: string) => createHash("sha256").update(s).digest("hex");

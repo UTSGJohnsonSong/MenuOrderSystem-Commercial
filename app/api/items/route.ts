@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { sql } from "@/lib/db";
-import { requireCurrentSpace, requireCategoryInSpace, handleApiError, ApiError } from "@/lib/auth";
+import { requireCurrentSpace, requireCategoryInSpace, handleApiError, ApiError, isGuestVisitor } from "@/lib/auth";
+import { guestItems, guestJson } from "@/lib/guest";
 import { MenuItem } from "@/lib/types";
 
 export async function GET() {
   try {
+    if (await isGuestVisitor()) return guestJson(guestItems());
     const { spaceId } = await requireCurrentSpace();
     const rows = await sql`
       SELECT id, category_id, name, image_url, ingredients, instructions, notes,

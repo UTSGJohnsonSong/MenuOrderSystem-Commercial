@@ -186,7 +186,8 @@ export default function SettingsPage() {
                 onChange={e => setNameDraft(e.target.value)}
                 style={{
                   flex: 1, padding: "10px 12px", borderRadius: "12px",
-                  border: "1.5px solid #FFE2BD", fontSize: "0.9375rem",
+                  // 16px: under that, iOS zooms the page on focus
+                  border: "1.5px solid #FFE2BD", fontSize: "16px",
                   color: "#3D2C22", outline: "none",
                 }} />
               <button onClick={saveName} style={{
