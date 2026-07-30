@@ -77,6 +77,24 @@ function LoginForm() {
   // for the user to find out why nothing happens.
   const clickable = phoneOk && codeOk && !busy;
 
+  /* 短信通道还没接通时，服务端会回 smsPending。不显示的话，用户会对着
+   * 一个永远不会到的验证码干等 —— 页面这边看起来一切正常。 */
+  const [smsPending, setSmsPending] = useState(false);
+  const [tourBusy, setTourBusy] = useState(false);
+
+  const enterTour = async () => {
+    if (tourBusy) return;
+    setTourBusy(true);
+    try {
+      const res = await fetch("/api/guest", { method: "POST" });
+      if (!res.ok) throw new Error("guest cookie refused");
+      window.location.href = "/";
+    } catch (e) {
+      console.error("[login] could not start the tour", e);
+      setTourBusy(false);
+    }
+  };
+
   const sendCode = async () => {
     if (!canSend) return;
     setError("");
@@ -91,6 +109,7 @@ function LoginForm() {
       setSent(true);
       setCountdown(60);
       if (data.devCode) setDevCode(data.devCode);
+      if (data.smsPending) setSmsPending(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : "发送失败，请重试");
     } finally {
@@ -371,6 +390,24 @@ function LoginForm() {
           <p style={{ color: "#C47A2C", fontSize: "0.8125rem", marginTop: 10, width: "100%", flex: "none" }}>
             开发模式验证码：<strong>{devCode}</strong>
           </p>
+        )}
+        {smsPending && (
+          <div style={{ marginTop: 10, width: "100%", flex: "none" }}>
+            <p role="alert" style={{ color: "#C47A2C", fontSize: "0.78125rem", lineHeight: 1.6 }}>
+              验证码还发不出来——还差一道手续，批下来就开放注册。
+              <br />现在可以先进去逛逛，菜单、食记、菜品库都能翻。
+            </p>
+            <button
+              onClick={enterTour}
+              style={{
+                marginTop: 8, height: 38, padding: "0 16px", borderRadius: 999,
+                border: "1.5px solid #DCB98A", background: "none", cursor: "pointer",
+                color: "#C9831F", fontSize: "0.8125rem", fontWeight: 700,
+              }}
+            >
+              {tourBusy ? "正在打开…" : "先随便逛逛 →"}
+            </button>
+          </div>
         )}
         {error && (
           <p role="alert" style={{ color: "#C9563F", fontSize: "0.78125rem", marginTop: 10, width: "100%", flex: "none" }}>

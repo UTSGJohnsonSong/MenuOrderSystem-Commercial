@@ -35,7 +35,19 @@ export async function POST(req: Request) {
 
     // 只有开发环境的 console 通道才把验证码带回响应（sendSmsCode 在生产 + console 时会直接抛错）
     const devCode = isConsoleProvider() && process.env.NODE_ENV !== "production" ? code : undefined;
-    return NextResponse.json({ ok: true, ...(devCode ? { devCode } : {}) });
+
+    /* 生产环境走 console 通道（备案期内测）时，验证码只进服务器日志，用户永远收不到。
+     * 这里必须如实告诉前端，否则页面会照常开始 60 秒倒计时、装成发送成功，
+     * 让人对着一个不会来的短信干等——这是陌生访客最可能撞上的死胡同。
+     * 注意不按手机号区分（比如白名单号码就不提示），那会让这个响应变成
+     * 探测「哪些号码能直登」的工具。 */
+    const smsPending = isConsoleProvider() && process.env.NODE_ENV === "production";
+
+    return NextResponse.json({
+      ok: true,
+      ...(devCode ? { devCode } : {}),
+      ...(smsPending ? { smsPending: true } : {}),
+    });
   } catch (e) {
     return handleApiError(e);
   }
