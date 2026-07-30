@@ -665,8 +665,19 @@ export default function OrderPage() {
           <section
             onClick={() => setShowCoverBtn(v => !v)}
             style={{
-              flexShrink: 0, margin: "12px 12px 4px",
-              height: "188px", borderRadius: "24px",
+              /* 通栏到屏幕最顶端，把状态栏那条底色一起吃掉。
+               *
+               * 改之前：上方留 12px 外边距，而状态栏后面那条（安全区）露的是页面
+               * 的奶油底色 —— 那条对用户没有任何信息量，纯浪费，而封面又已经占了
+               * 188px，菜单被挤到很下面。
+               *
+               * 现在高度是 150 + 安全区：安全区为 0 的设备（桌面浏览器、非刘海机）
+               * 直接得到一个更矮的封面，有刘海的机器则把那条填成封面色。
+               * 两种情况下菜单的起始位置都比原来高约 50px。
+               * 文案和「换封面」按钮都是 bottom 定位的，不受顶部高度变化影响。 */
+              flexShrink: 0, margin: "0 0 4px",
+              height: "calc(150px + env(safe-area-inset-top))",
+              borderRadius: "0 0 24px 24px",
               position: "relative", overflow: "hidden",
               background: cover.bg,
               boxShadow: "0 6px 20px rgba(120,80,40,0.12)",
@@ -682,7 +693,9 @@ export default function OrderPage() {
             {/* 轻装饰（照片封面不叠 emoji，别遮人家的照片） */}
             {!isPhoto && (
               <>
-                <span style={{ position: "absolute", top: "14px", right: "64px", fontSize: "3.25rem", opacity: 0.5, transform: "rotate(8deg)" }}>
+                {/* 顶部装饰要让开状态栏：封面通栏之后，纯 top:14px 会把它塞到
+                    刘海/时间那一行底下。底部那个是 bottom 定位的，不受影响。 */}
+                <span style={{ position: "absolute", top: "calc(14px + env(safe-area-inset-top))", right: "64px", fontSize: "3.25rem", opacity: 0.5, transform: "rotate(8deg)" }}>
                   {cover.deco[0]}
                 </span>
                 <span style={{ position: "absolute", bottom: "18px", right: "22px", fontSize: "1.75rem", opacity: 0.45, transform: "rotate(-10deg)" }}>
