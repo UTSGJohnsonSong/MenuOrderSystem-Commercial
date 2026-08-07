@@ -8,19 +8,24 @@ export interface CoverPreset {
   id: string;
   label: string;
   bg: string;        // CSS background
+  /* 渐变最顶端的那个颜色。用来染 iOS 状态栏那一条——
+   * Safari 浏览模式下网页内容不会延伸到状态栏底下（那里 env(safe-area-inset-top) 就是 0），
+   * 那条是 Safari 自己按 <meta name="theme-color"> 画的。不同步的话，
+   * 封面通栏到顶之后，状态栏仍是奶油色，看起来就像封面被削掉了上半截。 */
+  tint: string;
   deco: [string, string]; // 两个装饰 emoji（右上大、左下小）
   dark: boolean;     // true = 深色底，文字用奶油白；false = 浅色底，文字用深棕
 }
 
 export const COVER_PRESETS: CoverPreset[] = [
-  { id: "warm-orange",     label: "暖橙早餐", bg: "linear-gradient(135deg, #FFB25E 0%, #FFE3B8 100%)", deco: ["🍚", "🥢"], dark: false },
-  { id: "cream-kitchen",   label: "奶油厨房", bg: "linear-gradient(135deg, #FFF3E0 0%, #FFDDB5 100%)", deco: ["🏠", "🍳"], dark: false },
-  { id: "tomato-dinner",   label: "番茄晚餐", bg: "linear-gradient(135deg, #E86A4C 0%, #FFA76B 100%)", deco: ["🍅", "🍝"], dark: true },
-  { id: "sakura-bento",    label: "樱花便当", bg: "linear-gradient(135deg, #FFD9E3 0%, #FFF3EA 100%)", deco: ["🌸", "🍱"], dark: false },
-  { id: "night-pot",       label: "深夜小锅", bg: "linear-gradient(135deg, #4A3226 0%, #8A5A34 100%)", deco: ["🍲", "✨"], dark: true },
-  { id: "weekend-dessert", label: "周末甜点", bg: "linear-gradient(135deg, #FFEFB8 0%, #FFD9E8 100%)", deco: ["🍮", "🥄"], dark: false },
-  { id: "fresh-veggie",    label: "清新蔬菜", bg: "linear-gradient(135deg, #DFF0D0 0%, #FFF9EC 100%)", deco: ["🥬", "🥕"], dark: false },
-  { id: "blue-midnight",   label: "蓝色夜宵", bg: "linear-gradient(135deg, #93AECF 0%, #6E7BA8 100%)", deco: ["🌙", "🍜"], dark: true },
+  { id: "warm-orange",     label: "暖橙早餐", bg: "linear-gradient(135deg, #FFB25E 0%, #FFE3B8 100%)", tint: "#FFB25E", deco: ["🍚", "🥢"], dark: false },
+  { id: "cream-kitchen",   label: "奶油厨房", bg: "linear-gradient(135deg, #FFF3E0 0%, #FFDDB5 100%)", tint: "#FFF3E0", deco: ["🏠", "🍳"], dark: false },
+  { id: "tomato-dinner",   label: "番茄晚餐", bg: "linear-gradient(135deg, #E86A4C 0%, #FFA76B 100%)", tint: "#E86A4C", deco: ["🍅", "🍝"], dark: true },
+  { id: "sakura-bento",    label: "樱花便当", bg: "linear-gradient(135deg, #FFD9E3 0%, #FFF3EA 100%)", tint: "#FFD9E3", deco: ["🌸", "🍱"], dark: false },
+  { id: "night-pot",       label: "深夜小锅", bg: "linear-gradient(135deg, #4A3226 0%, #8A5A34 100%)", tint: "#4A3226", deco: ["🍲", "✨"], dark: true },
+  { id: "weekend-dessert", label: "周末甜点", bg: "linear-gradient(135deg, #FFEFB8 0%, #FFD9E8 100%)", tint: "#FFEFB8", deco: ["🍮", "🥄"], dark: false },
+  { id: "fresh-veggie",    label: "清新蔬菜", bg: "linear-gradient(135deg, #DFF0D0 0%, #FFF9EC 100%)", tint: "#DFF0D0", deco: ["🥬", "🥕"], dark: false },
+  { id: "blue-midnight",   label: "蓝色夜宵", bg: "linear-gradient(135deg, #93AECF 0%, #6E7BA8 100%)", tint: "#93AECF", deco: ["🌙", "🍜"], dark: true },
 ];
 
 export const DEFAULT_COVER = "warm-orange";

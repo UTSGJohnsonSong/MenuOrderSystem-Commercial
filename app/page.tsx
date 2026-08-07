@@ -15,6 +15,7 @@ import ItemDetailModal from "@/components/ItemDetailModal";
 import CatIcon from "@/components/CatIcon";
 import ItemForm from "@/components/ItemForm";
 import CoverCropper from "@/components/CoverCropper";
+import ThemeColor from "@/components/ThemeColor";
 
 interface SpaceLite { name: string; cover_preset: string; cover_image_url: string | null }
 
@@ -662,6 +663,10 @@ export default function OrderPage() {
         const textColor = dark ? "#FFF6E8" : "#4A2E1F";
         const subColor = dark ? "rgba(255,246,232,0.88)" : "#8A5A2B";
         return (
+          <>
+          {/* 状态栏那条跟着封面走。照片封面取不到主色，退回封面预设的 tint，
+              总比留一条奶油色缝强 */}
+          <ThemeColor color={cover.tint} />
           <section
             onClick={() => setShowCoverBtn(v => !v)}
             style={{
@@ -747,6 +752,7 @@ export default function OrderPage() {
               </p>
             </div>
           </section>
+          </>
         );
       })()}
 

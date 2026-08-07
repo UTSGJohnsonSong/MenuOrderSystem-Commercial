@@ -9,13 +9,27 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-type Platform = "ios" | "android" | "desktop" | "standalone";
+type Platform = "ios" | "android" | "desktop" | "standalone" | "inapp";
+
+/* 内置浏览器里**装不了**桌面图标——微信、QQ、微博这些 WebView 都没有
+ * 「添加到主屏幕」这个菜单项。而这个产品的流量路径正是
+ * 小红书 → 微信群 → 在微信里点开，所以这是最常见的一种情况，
+ * 不能让它掉进「安卓通用步骤」里照着一个不存在的菜单找。 */
+function detectInApp(ua: string): string | null {
+  if (/MicroMessenger/i.test(ua)) return "微信";
+  if (/QQ\/[0-9]/i.test(ua) || /QQBrowser/i.test(ua)) return "QQ";
+  if (/Weibo/i.test(ua)) return "微博";
+  if (/DingTalk/i.test(ua)) return "钉钉";
+  if (/XiaoHongShu|discover/i.test(ua)) return "小红书";
+  return null;
+}
 
 function detectPlatform(): Platform {
   if (typeof window === "undefined") return "desktop";
   if (window.matchMedia("(display-mode: standalone)").matches
     || (navigator as { standalone?: boolean }).standalone) return "standalone";
   const ua = navigator.userAgent;
+  if (detectInApp(ua)) return "inapp";
   if (/iPhone|iPad|iPod/i.test(ua)) return "ios";
   if (/Android/i.test(ua)) return "android";
   return "desktop";
@@ -45,8 +59,14 @@ function Step({ n, children }: { n: number; children: React.ReactNode }) {
 export default function InstallPage() {
   const router = useRouter();
   const [platform, setPlatform] = useState<Platform | null>(null);
+  const [inApp, setInApp] = useState<string | null>(null);
+  const [isIOS, setIsIOS] = useState(false);
 
-  useEffect(() => { setPlatform(detectPlatform()); }, []);
+  useEffect(() => {
+    setPlatform(detectPlatform());
+    setInApp(detectInApp(navigator.userAgent));
+    setIsIOS(/iPhone|iPad|iPod/i.test(navigator.userAgent));
+  }, []);
 
   if (!platform) return null;
 
@@ -86,6 +106,35 @@ export default function InstallPage() {
           </div>
         )}
 
+        {platform === "inapp" && (
+          <>
+            <div style={{
+              backgroundColor: "#FFF1DD", borderRadius: "18px", padding: "16px",
+              border: "1.5px solid rgba(240,210,170,0.7)", marginBottom: "16px", textAlign: "left",
+            }}>
+              <p style={{ color: "#C47A2C", fontSize: "0.9375rem", fontWeight: 700, lineHeight: 1.6 }}>
+                你现在是在{inApp}里打开的
+              </p>
+              <p style={{ color: "#8A6F5A", fontSize: "0.875rem", marginTop: "6px", lineHeight: 1.6 }}>
+                {inApp}自带的浏览器装不了桌面图标，要先跳到手机自己的浏览器。
+              </p>
+            </div>
+            <Step n={1}>
+              点右上角的 <strong>···</strong>
+              <span style={{ color: "#9A7B5F" }}>（三个点）</span>
+            </Step>
+            <Step n={2}>
+              选 <strong>{isIOS ? "「在Safari中打开」" : "「在浏览器打开」"}</strong>
+            </Step>
+            <Step n={3}>
+              到了浏览器里，再打开这个页面，会有对应的安装步骤
+            </Step>
+            <p style={{ color: "#C8A878", fontSize: "0.75rem", textAlign: "center", marginTop: "16px", lineHeight: 1.6 }}>
+              不装也完全能用，只是每次要翻链接。<br />装了以后点桌面图标就进来。
+            </p>
+          </>
+        )}
+
         {platform === "ios" && (
           <>
             <Step n={1}>
@@ -99,7 +148,7 @@ export default function InstallPage() {
               点右上角<strong>「添加」</strong>，就完成啦
             </Step>
             <p style={{ color: "#C8A878", fontSize: "0.75rem", textAlign: "center", marginTop: "16px", lineHeight: 1.6 }}>
-              如果你是在微信里打开的，先点右上角「···」<br />选「在浏览器打开」，再按上面的步骤来。
+              找不到「添加到主屏幕」的话，<br />确认一下当前是 Safari，不是别的 App 里的浏览器。
             </p>
           </>
         )}
@@ -116,7 +165,9 @@ export default function InstallPage() {
               确认添加，桌面上就有小厨房的图标啦
             </Step>
             <p style={{ color: "#C8A878", fontSize: "0.75rem", textAlign: "center", marginTop: "16px", lineHeight: 1.6 }}>
-              不同手机浏览器的菜单位置略有不同，<br />找「添加到主屏幕」这几个字就对了。
+              各家浏览器叫法不一样：华为叫「添加到桌面」，<br />
+              小米 / OPPO / vivo 多是「添加到主屏幕」，Chrome 是「安装应用」。<br />
+              都找不到的话，换 Chrome 打开这个页面最稳。
             </p>
           </>
         )}
