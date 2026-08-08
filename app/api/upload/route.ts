@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 import { requireCurrentSpace, handleApiError, ApiError } from "@/lib/auth";
+import { track } from "@/lib/track";
 import { uploadDir } from "@/lib/upload";
 
 /*
@@ -31,6 +32,10 @@ export async function POST(req: Request) {
     await mkdir(dir, { recursive: true });
     const name = `${randomUUID()}.jpg`;
     await writeFile(path.join(dir, name), buf);
+
+    // 图片配额是唯一有真实成本的限额（4 Mbps 上行 + 本地磁盘 + 每晚备份），
+    // 定 20 张还是 50 张要看这个数的实际分布
+    track("image_upload");
 
     return NextResponse.json({ url: `/api/uploads/${name}` });
   } catch (e) {

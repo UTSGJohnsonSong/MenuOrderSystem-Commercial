@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 import { sql } from "@/lib/db";
 import { requireCurrentSpace, requireCategoryInSpace, handleApiError, ApiError, isGuestVisitor } from "@/lib/auth";
 import { guestItems, guestJson } from "@/lib/guest";
+import { track } from "@/lib/track";
 import { MenuItem } from "@/lib/types";
 
 export async function GET() {
@@ -36,6 +37,12 @@ export async function POST(req: Request) {
       VALUES (${randomUUID()}, ${spaceId}, ${item.category_id}, ${item.name.trim()}, ${item.image_url ?? ""}, ${item.ingredients ?? ""}, ${item.instructions ?? ""}, ${item.notes ?? ""}, ${item.is_active ?? true}, ${item.sort_order ?? 0}, ${user.id})
       RETURNING id, category_id, name, image_url, ingredients, instructions, notes, is_active, sort_order, created_at, updated_at
     `;
+
+    /* 区分来源：从菜品库加进来的菜带 /library/ 开头的图，自己写的没有。
+     * 这一个字段回答「那 416 道菜和 177 张插画到底有没有人用」——
+     * 如果绝大多数是 manual，说明菜品库是摆设，付费墙就不该立在配图上。 */
+    track("item_add", item.image_url?.startsWith("/library/") ? "library" : "manual");
+
     return NextResponse.json(row);
   } catch (e) {
     return handleApiError(e);

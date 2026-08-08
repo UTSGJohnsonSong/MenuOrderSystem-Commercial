@@ -4,6 +4,7 @@ import { sql } from "@/lib/db";
 import { requireCurrentSpace, handleApiError, ApiError, isGuestVisitor } from "@/lib/auth";
 import { guestJson, guestLogs } from "@/lib/guest";
 import { MealLog } from "@/lib/types";
+import { track } from "@/lib/track";
 import { MEAL_IDS } from "@/lib/meals";
 
 export async function GET() {
@@ -39,6 +40,12 @@ export async function POST(req: Request) {
         created_at = now()
       RETURNING id, date, meal, items, created_at
     `;
+
+    // 未来的日期 = 备餐计划（评论区最高赞的功能请求），当天或过去 = 记录刚吃的。
+    // 两者的留存含义完全不同，混在一起统计等于没统计。
+    const today = new Date().toISOString().slice(0, 10);
+    track("meal_log_write", log.date > today ? "plan" : "record");
+
     return NextResponse.json(row);
   } catch (e) {
     return handleApiError(e);

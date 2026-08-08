@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { handleApiError, ApiError, isValidPhone, createSession, setSessionCookie, maskPhone } from "@/lib/auth";
 import { testAccountCode } from "@/lib/sms";
+import { track } from "@/lib/track";
 import { createSpaceForUser, joinSpaceByCode } from "@/lib/space";
 
 interface UserRow {
@@ -67,10 +68,14 @@ export async function POST(req: Request) {
       }
     }
 
+    if (user.is_new) track("register", inviteCode ? "invite" : "direct");
+
     let created = false;
     if (inviteCode) {
       // 带邀请码登录：直接加入对方的小厨房
       await joinSpaceByCode(user.id, inviteCode);
+      // 注册即接受邀请——北极星指标里最有价值的那一类，和事后输码要分开看
+      track("invite_accepted", "signup");
     } else if (!user.active_space_id) {
       // 新用户：自动建好自己的小厨房，不需要填任何表单
       await createSpaceForUser(user.id);

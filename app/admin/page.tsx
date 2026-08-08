@@ -26,7 +26,32 @@ interface Overview {
   wau: number;
   conversion_today: number | null;
   daily: { day: string; views: number; regs: number; conversion: number | null; sources: string }[];
+  events: { name: string; meta: string | null; d7: number; d30: number; total: number }[];
 }
+
+/* 事件的人话解释。看板上写 item_add 没人看得懂，写「加了一道菜」才有人会看。
+ * 顺序就是展示顺序，按「决定限额时的重要性」排。 */
+const EVENT_LABELS: Record<string, string> = {
+  register: "注册",
+  invite_accepted: "接受邀请 ★北极星",
+  item_add: "加了一道菜",
+  meal_log_write: "写了一条食记",
+  image_upload: "上传照片",
+  invite_share: "复制了邀请",
+  guest_enter: "进入参观模式",
+  install_prompt_view: "看了安装引导",
+};
+
+const META_LABELS: Record<string, string> = {
+  library: "从菜品库",
+  manual: "自己写的",
+  plan: "备餐计划",
+  record: "记录已吃",
+  invite: "被邀请来的",
+  direct: "自己来的",
+  signup: "注册时接受",
+  code: "事后输码",
+};
 
 interface SmsCode { phone: string; code: string; status: string; at: string }
 
@@ -287,6 +312,47 @@ export default function AdminPage() {
                       <td style={{ ...td, fontWeight: d.regs > 0 ? 700 : 400 }}>{d.regs || "—"}</td>
                       <td style={td}>{d.conversion === null ? "—" : `${d.conversion}%`}</td>
                       <td style={{ ...td, color: "#888", fontSize: "12px" }}>{d.sources || "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <h2 style={{ fontSize: "16px", margin: "28px 0 6px" }}>行为分布</h2>
+            <p style={{ fontSize: "12px", color: "#888", margin: "0 0 10px" }}>
+              免费额度该定在哪，看这张表。从菜品库加的比例低 = 菜品库没人用；
+              上传照片的分布决定图片配额；接受邀请是北极星指标。
+            </p>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ borderCollapse: "collapse", width: "100%", maxWidth: "620px" }}>
+                <thead>
+                  <tr>
+                    <th style={th}>动作</th>
+                    <th style={th}>近 7 天</th>
+                    <th style={th}>近 30 天</th>
+                    <th style={th}>累计</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {overview.events.length === 0 ? (
+                    <tr>
+                      <td style={{ ...td, color: "#888" }} colSpan={4}>
+                        还没有任何行为数据 —— 埋点 2026-07-31 才加上，且注册尚未开放
+                      </td>
+                    </tr>
+                  ) : overview.events.map(e => (
+                    <tr key={e.name + (e.meta ?? "")}>
+                      <td style={{ ...td, whiteSpace: "nowrap" }}>
+                        {EVENT_LABELS[e.name] ?? e.name}
+                        {e.meta && (
+                          <span style={{ color: "#888", fontSize: "12px" }}>
+                            {" · "}{META_LABELS[e.meta] ?? e.meta}
+                          </span>
+                        )}
+                      </td>
+                      <td style={{ ...td, fontWeight: e.d7 > 0 ? 700 : 400 }}>{e.d7 || "—"}</td>
+                      <td style={td}>{e.d30 || "—"}</td>
+                      <td style={td}>{e.total}</td>
                     </tr>
                   ))}
                 </tbody>

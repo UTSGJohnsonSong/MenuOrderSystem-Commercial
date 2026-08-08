@@ -38,7 +38,7 @@ export async function ensureSchema() {
       id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       name         TEXT NOT NULL DEFAULT '我们的小厨房',
       invite_code  TEXT UNIQUE NOT NULL,
-      member_limit INT NOT NULL DEFAULT 8,
+      member_limit INT NOT NULL DEFAULT 2,
       owner_id     UUID NOT NULL REFERENCES users(id),
       deleted_at   TIMESTAMPTZ,
       created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -52,6 +52,16 @@ export async function ensureSchema() {
 
   // 封禁与软删分开：banned_at 可恢复，成员登录后看到「暂时无法访问」提示
   await sql`ALTER TABLE spaces ADD COLUMN IF NOT EXISTS banned_at TIMESTAMPTZ`;
+  /* 免费版是 2 人（情侣场景），付费才 8 人。
+   *
+   * 光改上面 CREATE TABLE 里的 DEFAULT 是不够的：那条只在表**不存在**时执行，
+   * 而生产库里 spaces 表早就建好了，默认值会一直停在 8。开放注册后再降到 2，
+   * 就是从每个已存在的空间手里收回 6 个名额——那是 Evernote 2016 式的口碑事故。
+   * 所以这里显式 ALTER，让已有部署也跟着改。
+   *
+   * 只改「以后新建的空间」的默认值，不动任何已存在的行——已经拿到 8 个名额的
+   * 空间保持 8，这是有意的：给早期用户的东西不收回。 */
+  await sql`ALTER TABLE spaces ALTER COLUMN member_limit SET DEFAULT 2`;
 
   // 管理操作留痕：谁、何时、对哪个空间、做了什么。出纠纷时的唯一证据。
   await sql`

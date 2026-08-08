@@ -102,8 +102,32 @@ export async function GET() {
     const d7Base = Number(retention.d7_base);
     const d30Base = Number(retention.d30_base);
     const today = daily[0];
+    /* 行为事件分布（近 7 天 / 近 30 天 / 累计）。
+     *
+     * 这一块回答的是免费额度到底该定在哪：item_add 的 library 与 manual 之比说明
+     * 菜品库有没有人用；meal_log_write 的 plan 与 record 之比说明备餐功能值不值得投；
+     * image_upload 决定图片配额；invite_accepted 是北极星指标的分子。
+     * 在这些数字出来之前定限额，就是拍脑袋。 */
+    const eventStats = await sql<{ name: string; meta: string; d7: string; d30: string; total: string }>`
+      SELECT name, meta,
+             count(*) FILTER (WHERE created_at >= now() - interval '7 days')::text  AS d7,
+             count(*) FILTER (WHERE created_at >= now() - interval '30 days')::text AS d30,
+             count(*)::text AS total
+      FROM events
+      WHERE name <> 'welcome_view'
+      GROUP BY name, meta
+      ORDER BY count(*) DESC
+    `;
+
     return NextResponse.json({
       users: { total: Number(users.total), today: Number(users.today), week: Number(users.week) },
+      events: eventStats.map(e => ({
+        name: e.name,
+        meta: e.meta || null,
+        d7: Number(e.d7),
+        d30: Number(e.d30),
+        total: Number(e.total),
+      })),
       spaces: totalSpaces,
       invite_rate: totalSpaces > 0 ? Math.round((Number(invited.multi) / totalSpaces) * 100) : 0,
       sms_today: Number(sms.today),
