@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useStore, useCart, saveMealLog } from "@/lib/store";
 import { MenuItem, Category, MealLog } from "@/lib/types";
 import { COVER_PRESETS, getCover } from "@/lib/covers";
+import { topEdgeColor } from "@/lib/image-tint";
 import { MEALS, guessMeal } from "@/lib/meals";
 import { compressImage } from "@/lib/image";
 import { uploadImage } from "@/lib/store";
@@ -545,6 +546,23 @@ export default function OrderPage() {
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, []);
 
+  /* 相册封面的状态栏色：从照片顶边现取。
+   * 内置封面的顶色写死在 lib/covers.ts，照片的取不到，只能读图。
+   * 取不到（跨域污染、图挂了、顶边全透明）时返回 null，下面退回预设色。
+   *
+   * 结果连着来源 URL 一起存，用派生值而不是在 effect 里同步 setState——
+   * 换封面的那一刻旧色必须立刻失效，否则新照片上去了、状态栏还是上一张的颜色，
+   * 正是这次要修的现象。（顺带避开 react-hooks/set-state-in-effect） */
+  const photoUrl = space?.cover_image_url ?? null;
+  const [tintFor, setTintFor] = useState<{ url: string; color: string | null } | null>(null);
+  useEffect(() => {
+    if (!photoUrl) return;
+    let alive = true;
+    topEdgeColor(photoUrl).then(color => { if (alive) setTintFor({ url: photoUrl, color }); });
+    return () => { alive = false; };
+  }, [photoUrl]);
+  const photoTint = tintFor?.url === photoUrl ? tintFor.color : null;
+
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 2400); };
 
   const changeCover = async (presetId: string) => {
@@ -664,9 +682,10 @@ export default function OrderPage() {
         const subColor = dark ? "rgba(255,246,232,0.88)" : "#8A5A2B";
         return (
           <>
-          {/* 状态栏那条跟着封面走。照片封面取不到主色，退回封面预设的 tint，
-              总比留一条奶油色缝强 */}
-          <ThemeColor color={cover.tint} />
+          {/* 状态栏那条跟着封面走。
+            * 相册封面用从照片顶边取到的色（上面那个 effect），取不到才退回预设 tint——
+            * 退回时那条会停在一个和照片无关的颜色上，是已知的次优解，不是正常路径。 */}
+          <ThemeColor color={(isPhoto && photoTint) || cover.tint} />
           <section
             onClick={() => setShowCoverBtn(v => !v)}
             style={{
