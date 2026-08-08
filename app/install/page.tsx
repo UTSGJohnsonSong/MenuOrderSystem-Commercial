@@ -8,6 +8,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { clientTrack } from "@/lib/client-track";
 
 type Platform = "ios" | "android" | "desktop" | "standalone" | "inapp";
 
@@ -56,6 +57,10 @@ function Step({ n, children }: { n: number; children: React.ReactNode }) {
   );
 }
 
+/* 一次会话只上报一次曝光，避免来回返回这一页把分母灌大。
+ * 和 SourceTracker 一样是模块级变量：整页刷新会重置，这一页没必要更精确。 */
+let viewReported = false;
+
 export default function InstallPage() {
   const router = useRouter();
   const [platform, setPlatform] = useState<Platform | null>(null);
@@ -63,9 +68,18 @@ export default function InstallPage() {
   const [isIOS, setIsIOS] = useState(false);
 
   useEffect(() => {
-    setPlatform(detectPlatform());
+    const detected = detectPlatform();
+    setPlatform(detected);
     setInApp(detectInApp(navigator.userAgent));
     setIsIOS(/iPhone|iPad|iPod/i.test(navigator.userAgent));
+
+    /* meta 带上平台，因为这一页真正要回答的问题是「有多少人卡在
+     * 装不了的内置浏览器里」——inapp 的占比决定要不要把引导重心
+     * 从「怎么装」改成「先用浏览器打开」。 */
+    if (!viewReported) {
+      viewReported = true;
+      clientTrack("install_prompt_view", detected);
+    }
   }, []);
 
   if (!platform) return null;

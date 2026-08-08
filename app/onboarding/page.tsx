@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { clientTrack } from "@/lib/client-track";
 
 interface Me {
   user: { id: string } | null;
@@ -53,8 +54,12 @@ export default function OnboardingPage() {
 
   const inviteLink = `${window.location.origin}/join?code=${me.space.invite_code}`;
 
+  /* 复制邀请是北极星指标（注册后 48h 邀请成功率）的分母。分子是
+   * invite_accepted（lib/track.ts 在 auth/verify 和 space/join 里打）。
+   * 只在复制真的成功后才上报——写剪贴板在部分内置浏览器里会被拒绝。 */
   const copyCode = () => {
     navigator.clipboard.writeText(me.space!.invite_code).then(() => {
+      clientTrack("invite_share", "code");
       setCopied("code");
       setTimeout(() => setCopied(""), 2200);
     });
@@ -64,6 +69,7 @@ export default function OnboardingPage() {
     navigator.clipboard.writeText(
       `我建了一个我们的小厨房，以后想吃什么就来这里点～\n${inviteLink}\n邀请码：${me.space!.invite_code}`
     ).then(() => {
+      clientTrack("invite_share", "text");
       setCopied("text");
       setTimeout(() => setCopied(""), 2200);
     });

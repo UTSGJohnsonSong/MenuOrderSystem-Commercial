@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { sql } from "@/lib/db";
 import { handleApiError } from "@/lib/auth";
+import { track } from "@/lib/track";
 import { GUEST_COOKIE, GUEST_COOKIE_VALUE, GUEST_MAX_AGE } from "@/lib/guest";
 
 /*
@@ -29,15 +29,9 @@ export async function POST() {
      * item (C10 in the plan: throttle unauthenticated writes). Do not treat this
      * conditional as protection.
      *
-     * Fire-and-forget: awaiting would put a DB round trip in front of the least
-     * committed visitor in the funnel, and a metric must never keep anyone out.
-     * Logged rather than swallowed so a renamed table cannot read as zero tours
-     * forever. Nothing surfaces guest_enter yet — /api/admin/overview only
-     * aggregates welcome_view. */
-    if (!returning) {
-      sql`INSERT INTO events (name, meta) VALUES ('guest_enter', '')`
-        .catch(e => console.error("[guest] enter metric failed", e));
-    }
+     * Was a second hand-rolled fire-and-forget INSERT; routed through track()
+     * so the after() reasoning lives in one place instead of two copies. */
+    if (!returning) track("guest_enter");
 
     return NextResponse.json({ ok: true });
   } catch (e) {

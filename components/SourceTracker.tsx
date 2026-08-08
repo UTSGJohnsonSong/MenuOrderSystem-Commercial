@@ -2,6 +2,7 @@
 
 import { useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import { clientTrack } from "@/lib/client-track";
 
 /*
  * 落地页来源追踪：
@@ -40,10 +41,7 @@ function Tracker() {
 
     if (!alreadyViewed) {
       viewedThisSession = true;
-      fetch("/api/events", {
-        method: "POST",
-        body: JSON.stringify({ name: "welcome_view", meta: from }),
-      }).catch(() => {});
+      clientTrack("welcome_view", from);
     }
   }, [params]);
 

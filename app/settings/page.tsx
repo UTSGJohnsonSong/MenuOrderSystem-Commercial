@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { PRESET_CATEGORIES } from "@/lib/categories";
+import { clientTrack } from "@/lib/client-track";
 import CatIcon from "@/components/CatIcon";
 
 interface Member {
@@ -105,6 +106,9 @@ export default function SettingsPage() {
     navigator.clipboard.writeText(
       `来「${space.name}」和我一起点菜吧！\n${link}\n邀请码：${space.invite_code}`
     ).then(() => {
+      // 和 /onboarding 分开记（meta=settings）：注册当下就邀请，和用了一阵子
+      // 之后回来邀请，是两种完全不同的转化，混在一起等于没测
+      clientTrack("invite_share", "settings");
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
