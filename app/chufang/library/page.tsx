@@ -91,7 +91,7 @@ export default function LibraryPage() {
   };
 
   return (
-    <div style={{ height: `calc(100dvh - ${navH})`, display: "flex", flexDirection: "column", backgroundColor: "#FFF8EF" }}>
+    <div className="ktn-top-inset" style={{ height: `calc(100dvh - ${navH})`, display: "flex", flexDirection: "column", backgroundColor: "#FFF8EF" }}>
       {/* Header + 搜索（固定） */}
       <div style={{ padding: "20px 16px 0", flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>

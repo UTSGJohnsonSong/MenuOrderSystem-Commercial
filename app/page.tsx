@@ -714,6 +714,20 @@ export default function OrderPage() {
                 objectFit: "cover",
               }} onError={e => { e.currentTarget.style.display = "none"; }} />
             )}
+            {/* 状态栏遮罩。
+              * 装到主屏幕后（layout.tsx 的 statusBarStyle: black-translucent）封面会
+              * 铺到状态栏底下，而 iOS 把时间/信号/电量画成**白色**——8 个预设里有 5 个
+              * 是浅底，用户自己的照片更是什么颜色都可能，白字会直接消失。
+              * 这层从上往下淡出的深色保证它在任何封面上都读得清。
+              *
+              * 高度用 inset 的倍数而不是 inset + 常数：**浏览模式下 inset 是 0，
+              * 这一层就完全不存在**，不会给封面顶部平白加一道暗边。 */}
+            <div aria-hidden style={{
+              position: "absolute", top: 0, left: 0, right: 0,
+              height: "calc(env(safe-area-inset-top) * 1.35)",
+              background: "linear-gradient(180deg, rgba(38,26,16,0.52) 0%, rgba(38,26,16,0) 100%)",
+              pointerEvents: "none",
+            }} />
             {/* 轻装饰（照片封面不叠 emoji，别遮人家的照片） */}
             {!isPhoto && (
               <>

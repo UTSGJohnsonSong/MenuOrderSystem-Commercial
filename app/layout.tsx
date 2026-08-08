@@ -3,6 +3,7 @@ import "./globals.css";
 import BottomNav from "@/components/BottomNav";
 import GuestBar from "@/components/GuestBar";
 import SwRegister from "@/components/SwRegister";
+import StatusBarBand from "@/components/StatusBarBand";
 
 /* ── Viewport (separate export as required by Next.js 14+) ── */
 export const viewport: Viewport = {
@@ -31,7 +32,18 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     title: "吃什么呀",
-    statusBarStyle: "default",   // Light iOS status bar (fits cream top)
+    /* black-translucent 让已安装的 PWA 把页面画到状态栏底下，首页封面因此能真正
+     * 铺到屏幕最顶端，而不是补一条颜色（Safari 浏览模式下那条是浏览器自己的 UI，
+     * 网页够不到，只能补色——见 components/ThemeColor.tsx）。
+     *
+     * 代价是 iOS 强制白色状态栏文字，而全站页面顶部实测亮度 0.98。
+     * components/StatusBarBand.tsx 在首页以外的每一页垫一条深色带托住它，
+     * 首页则由封面自己的顶部遮罩负责。
+     *
+     * ⚠️ 这个 meta 是**启动时读一次的静态值**，不能跟着封面动态切。所以不存在
+     * 「深色封面才开」这种做法，要么全开要么全关。
+     * ⚠️ 对浏览模式（微信/小红书点开链接的人）完全无影响。 */
+    statusBarStyle: "black-translucent",
   },
 
   /* OG / share preview */
@@ -58,6 +70,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         {/* Register service worker (client-side, no-op in dev) */}
         <SwRegister />
+
+        {/* 状态栏底下的深色带（首页除外，那一条留给封面）。
+            浏览模式下高度为 0，等于不存在。 */}
+        <StatusBarBand />
 
         {/* App container — centered on desktop, full-width on mobile */}
         <div

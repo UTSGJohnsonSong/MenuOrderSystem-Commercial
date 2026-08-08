@@ -141,6 +141,19 @@ a {
    content run under the notch, so the status bar height has to be added back —
    it is 0 in a browser tab and ~47-59px once installed to the home screen.
    --ktn-top-base is the knob for how much air sits above the logo. */
+/* 装到主屏幕后页面会延伸到状态栏底下（layout.tsx 的 statusBarStyle:
+   black-translucent），页面顶部要把那条高度让出来，否则标题和返回按钮会被
+   状态栏压住。加在页面的根滚动容器上。
+
+   不需要 @media (display-mode: standalone)：env(safe-area-inset-top) 在
+   Safari 标签页里就是 0，这条规则在浏览模式下等于没写。
+
+   ⚠️ 首页不要加——它的封面卡自己已经是 `150px + env(safe-area-inset-top)`，
+   再加一层会把封面整个推下去，正好抵消这次改动的目的。
+   ⚠️ /welcome /login /join 也不要加——它们用的 --ktn-top / --ktn-nav-top
+   里已经含了这个 inset，加了会翻倍。 */
+.ktn-top-inset { padding-top: env(safe-area-inset-top); }
+
 :root {
   --ktn-top-base: 72px;
   --ktn-top: max(var(--ktn-top-base), calc(env(safe-area-inset-top) + 22px));

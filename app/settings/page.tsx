@@ -166,7 +166,7 @@ export default function SettingsPage() {
   const navH = "calc(56px + env(safe-area-inset-bottom))";
 
   return (
-    <div style={{
+    <div className="ktn-top-inset" style={{
       height: `calc(100dvh - ${navH})`, overflowY: "auto",
       overscrollBehavior: "contain", backgroundColor: "#FFF8EF",
     }}>

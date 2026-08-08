@@ -7,7 +7,7 @@ const p: React.CSSProperties = { color: "#6F5A48", fontSize: "0.875rem", lineHei
 
 export default function TermsPage() {
   return (
-    <div style={{ height: "100%", overflowY: "auto", backgroundColor: "#FFF8EF", padding: "24px 24px 80px", maxWidth: "640px", margin: "0 auto" }}>
+    <div className="ktn-top-inset" style={{ height: "100%", overflowY: "auto", backgroundColor: "#FFF8EF", padding: "24px 24px 80px", maxWidth: "640px", margin: "0 auto" }}>
       <Link href="/welcome" style={{ color: "#9A7B5F", fontSize: "0.875rem", textDecoration: "none" }}>← 返回</Link>
       <h1 style={{ color: "#2F241D", fontSize: "1.375rem", fontWeight: 800, marginTop: "16px" }}>用户协议</h1>
       <p style={{ ...p, marginTop: "8px", color: "#9A7B5F" }}>更新日期：2026年7月7日</p>

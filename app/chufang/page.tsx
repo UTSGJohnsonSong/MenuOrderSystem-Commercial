@@ -54,7 +54,7 @@ export default function ChufangPage() {
 
   if (view === "manage") {
     return (
-      <div style={{ height: `calc(100dvh - ${navH})`, overflowY: "auto", overscrollBehavior: "contain", backgroundColor: "#FFF8EF" }}>
+      <div className="ktn-top-inset" style={{ height: `calc(100dvh - ${navH})`, overflowY: "auto", overscrollBehavior: "contain", backgroundColor: "#FFF8EF" }}>
         <div style={{
           display: "flex", alignItems: "center", gap: "12px",
           padding: "20px 16px 12px",
@@ -137,7 +137,7 @@ export default function ChufangPage() {
   }
 
   return (
-    <div style={{ height: `calc(100dvh - ${navH})`, overflowY: "auto", overscrollBehavior: "contain", backgroundColor: "#FFF8EF" }}>
+    <div className="ktn-top-inset" style={{ height: `calc(100dvh - ${navH})`, overflowY: "auto", overscrollBehavior: "contain", backgroundColor: "#FFF8EF" }}>
       {/* Header */}
       <div style={{ padding: "24px 20px 20px" }}>
         <h1 style={{ color: "#3A2A1A", fontSize: "1.25rem", fontWeight: 700 }}>厨房</h1>

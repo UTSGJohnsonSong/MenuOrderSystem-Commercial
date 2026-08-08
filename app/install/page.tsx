@@ -85,7 +85,7 @@ export default function InstallPage() {
   if (!platform) return null;
 
   return (
-    <div style={{
+    <div className="ktn-top-inset" style={{
       minHeight: "100dvh",
       background: "linear-gradient(180deg, #FFFDF8 0%, #FFF3E0 100%)",
       padding: "0 28px 40px",

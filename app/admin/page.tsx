@@ -225,7 +225,7 @@ export default function AdminPage() {
   const td: React.CSSProperties = { padding: "8px 12px", borderBottom: "1px solid #eee", fontSize: "14px", verticalAlign: "middle" };
 
   return (
-    <div style={{ minHeight: "100dvh", backgroundColor: "#FAFAFA", color: "#222", fontFamily: "system-ui, sans-serif" }}>
+    <div className="ktn-top-inset" style={{ minHeight: "100dvh", backgroundColor: "#FAFAFA", color: "#222", fontFamily: "system-ui, sans-serif" }}>
       <div style={{ maxWidth: "960px", margin: "0 auto", padding: "24px 16px 80px" }}>
         <div style={{ display: "flex", alignItems: "baseline", gap: "16px", marginBottom: "20px" }}>
           <h1 style={{ fontSize: "18px", fontWeight: 700 }}>今天吃什么呀 · 管理后台</h1>
