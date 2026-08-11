@@ -51,8 +51,12 @@ const tabs = [
   { href: "/chufang", label: "厨房", Icon: IconKitchen },
 ];
 
-// 登录前的公开页面和沉浸式流程页不显示底部导航
-const HIDDEN_PATHS = ["/welcome", "/login", "/join", "/onboarding", "/privacy", "/terms", "/admin", "/install"];
+/* 登录前的公开页面和沉浸式流程页不显示底部导航。
+ *
+ * /together 在这条名单里，因为它整页只为一件事存在——两个人第一次同框的那一秒。
+ * 底下挂三个标签等于一边说「留一秒」一边给三个出口，那一刻就被稀释掉了。
+ * 它自己有「进小厨房」这个唯一出口。 */
+const HIDDEN_PATHS = ["/welcome", "/login", "/join", "/onboarding", "/privacy", "/terms", "/admin", "/install", "/together"];
 
 export default function BottomNav() {
   const pathname = usePathname();
