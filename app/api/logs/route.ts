@@ -46,7 +46,18 @@ export async function POST(req: Request) {
     const today = new Date().toISOString().slice(0, 10);
     track("meal_log_write", log.date > today ? "plan" : "record");
 
-    return NextResponse.json(row);
+    /* 「这是你们一起的第 N 顿饭」——保存那一刻是这个产品情绪最高的位置之一，
+     * 而在这之前它只回一句「已保存」。把累计数一起返回，省掉客户端再拉一次列表。
+     *
+     * 只数 date <= today：备餐计划是还没发生的饭，算进「一起吃了多少顿」是虚报。
+     * 同一天同一餐重复保存也不会让它变大——上面是 ON CONFLICT DO UPDATE，
+     * 行数不增，所以这个数天然就是「吃过几顿」而不是「点了几次」。 */
+    const [{ total }] = await sql<{ total: string }>`
+      SELECT count(*)::text AS total FROM meal_logs
+      WHERE space_id = ${spaceId} AND date <= ${today}
+    `;
+
+    return NextResponse.json({ ...row, total: Number(total) });
   } catch (e) {
     return handleApiError(e);
   }

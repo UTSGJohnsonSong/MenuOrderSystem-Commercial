@@ -165,17 +165,42 @@ function FoodCard({ item, categoryId, quantity, onIncrease, onDecrease, onClick 
 }
 
 /* ─── 今日菜单 Modal ─── */
+/*
+ * 保存成功那一刻说什么。
+ *
+ * 这里原本只有一句「✓ 已保存到食记」——一个纯状态回执。而这是整个点菜流程的
+ * 终点，也是这个产品少数几个「刚刚一起完成了一件事」的位置之一。
+ * 食记是这个产品的记忆本体，累计数是它唯一免费的情绪来源：不用做任何新功能，
+ * 只是把已经存在的数说出来。
+ *
+ * 数字必须是真的（服务端 count，见 app/api/logs/route.ts），
+ * 也必须只数吃过的——备餐计划不算，那是还没发生的饭。
+ *
+ * 整数关口给一句重一点的，但克制：不放彩带、不弹窗、不打断。
+ * 这一刻用户刚点完菜，正准备去做饭或者发给对方。
+ */
+function milestone(n: number): { title: string; sub: string } {
+  if (n === 1) return { title: "✓ 第一顿饭记下了", sub: "以后每一顿都会攒在食记里" };
+  if (n === 10) return { title: "🎉 第 10 顿饭", sub: "已经攒了十顿了，去食记翻翻看" };
+  if (n === 50) return { title: "🎉 第 50 顿饭", sub: "五十顿了，这本记忆有点厚度了" };
+  if (n === 100) return { title: "🎉 第 100 顿饭", sub: "一百顿。这大概就是一起生活的样子" };
+  if (n % 100 === 0) return { title: `🎉 第 ${n} 顿饭`, sub: "又一个整数，记着呢" };
+  return { title: `✓ 这是你们一起的第 ${n} 顿饭`, sub: "已保存到食记，可以复制发给主厨" };
+}
+
 function SendModal({ cartItems, categories, onClose, onDone, onSave, onIncrease, onDecrease }: {
   cartItems: ReturnType<typeof useCart>["cartItems"];
   categories: Category[];
   onClose: () => void;
   onDone: () => void;
-  onSave: (log: MealLog) => void | Promise<unknown>;
+  onSave: (log: MealLog) => Promise<{ total: number }>;
   onIncrease: (itemId: string) => void;
   onDecrease: (itemId: string) => void;
 }) {
   const [copied, setCopied] = useState(false);
   const [saved, setSaved] = useState(false);
+  // 已经一起吃过多少顿（不含备餐计划），保存成功时由服务端一并返回
+  const [total, setTotal] = useState(0);
   // 备餐：可以选日期（默认今天）和餐次（按当前时间猜默认）
   const [meal, setMeal] = useState(guessMeal());
   const [dateChoice, setDateChoice] = useState<"today" | "tomorrow" | "custom">("today");
@@ -219,7 +244,8 @@ function SendModal({ cartItems, categories, onClose, onDone, onSave, onIncrease,
       created_at: new Date().toISOString(),
     };
     try {
-      await onSave(log);
+      const { total } = await onSave(log);
+      setTotal(total);
       setSaved(true);
     } catch (e) {
       setSaveErr(e instanceof Error && e.message ? e.message : "没保存上，网络差了点，再试一次？");
@@ -245,11 +271,17 @@ function SendModal({ cartItems, categories, onClose, onDone, onSave, onIncrease,
         }}>
           <div>
             <h2 style={{ color: "#3A2A1A", fontSize: "1.0625rem", fontWeight: 800 }}>
-              {saved ? (isFuture ? "✓ 已加进备餐计划" : "✓ 已保存到食记") : "今日菜单"}
+              {saved
+                ? isFuture
+                  ? "✓ 已加进备餐计划"
+                  : total > 0 ? milestone(total).title : "✓ 已保存到食记"
+                : "今日菜单"}
             </h2>
             {saved && (
               <p style={{ color: "#9A7B5F", fontSize: "0.8125rem", marginTop: "2px" }}>
-                {isFuture ? "到了那天打开食记就能看到啦" : "已保存到食记，可以复制发给主厨"}
+                {isFuture
+                  ? "到了那天打开食记就能看到啦"
+                  : total > 0 ? milestone(total).sub : "已保存到食记，可以复制发给主厨"}
               </p>
             )}
           </div>

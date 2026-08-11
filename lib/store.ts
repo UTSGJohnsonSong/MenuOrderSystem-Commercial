@@ -217,10 +217,25 @@ export function useCart(items: MenuItem[], categories: Category[]) {
   return { cartItems, addToCart, decreaseFromCart, removeFromCart, clearCart, getQuantity, isInCart, totalItems };
 }
 
-// 单次保存食记，不需要订阅整个列表（点菜页用这个，避免不必要的轮询重渲染）
-export async function saveMealLog(log: MealLog): Promise<MealLog> {
-  if (isGuestNow()) return guestSaveLog(log);
-  return apiFetch<MealLog>("/api/logs", { method: "POST", body: JSON.stringify(log) });
+/* 单次保存食记，不需要订阅整个列表（点菜页用这个，避免不必要的轮询重渲染）。
+ *
+ * total = 这个厨房**已经吃过**的顿数（date <= 今天，不含备餐计划）。
+ * 服务端顺手返回，省掉客户端为了显示「第 N 顿饭」再拉一次整个列表。 */
+export async function saveMealLog(log: MealLog): Promise<{ log: MealLog; total: number }> {
+  if (isGuestNow()) {
+    const saved = guestSaveLog(log);
+    // 参观模式的底稿在服务器（8 条示例食记），本地只有叠加层，
+    // 所以这个数得把两边合起来算——多一次 GET，换的是这一刻不说错话
+    const base = await apiFetch<MealLog[]>("/api/logs").catch(() => [] as MealLog[]);
+    const today = new Date().toISOString().slice(0, 10);
+    return { log: saved, total: applyLogs(base).filter(l => l.date <= today).length };
+  }
+  const res = await apiFetch<MealLog & { total?: number }>("/api/logs", {
+    method: "POST",
+    body: JSON.stringify(log),
+  });
+  const { total, ...saved } = res;
+  return { log: saved as MealLog, total: total ?? 0 };
 }
 
 /* 图片上传：客户端压缩后的 jpeg dataURL → 服务器文件 → 返回可直接用的 URL。
@@ -266,7 +281,7 @@ export function useMealLog() {
   }, []);
 
   const saveLog = async (log: MealLog) => {
-    const saved = await saveMealLog(log);
+    const { log: saved } = await saveMealLog(log);
     setLogs(prev => {
       // 覆盖粒度与服务端一致：同一天同一餐
       const exists = prev.some(l => l.date === saved.date && l.meal === saved.meal);
