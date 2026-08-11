@@ -136,7 +136,8 @@ function JoinContent() {
       const res = await fetch("/api/space/join", { method: "POST", body: JSON.stringify({ code }) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "加入失败");
-      router.replace("/");
+      // 不直接进厨房：两个人第一次在同一个空间里，这一秒要留出来（app/together）
+      router.replace("/together");
     } catch (e) {
       setFailure({ code, message: e instanceof Error ? e.message : "加入失败" });
       setJoining(false);

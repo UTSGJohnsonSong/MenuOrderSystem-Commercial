@@ -71,9 +71,11 @@ export async function POST(req: Request) {
     if (user.is_new) track("register", inviteCode ? "invite" : "direct");
 
     let created = false;
+    let joined = false;
     if (inviteCode) {
       // 带邀请码登录：直接加入对方的小厨房
       await joinSpaceByCode(user.id, inviteCode);
+      joined = true;
       // 注册即接受邀请——北极星指标里最有价值的那一类，和事后输码要分开看
       track("invite_accepted", "signup");
     } else if (!user.active_space_id) {
@@ -85,7 +87,10 @@ export async function POST(req: Request) {
     const token = await createSession(user.id);
     await setSessionCookie(token);
 
-    return NextResponse.json({ ok: true, created });
+    /* joined 让登录页知道该把人送去哪：带邀请码进来的人刚刚和另一个人组成了
+     * 一个小厨房，那一刻要留出来（/together），不能直接扔进点菜页。
+     * created 是「自己新建了厨房」，两者互斥。 */
+    return NextResponse.json({ ok: true, created, joined });
   } catch (e) {
     return handleApiError(e);
   }

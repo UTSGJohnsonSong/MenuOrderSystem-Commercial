@@ -136,7 +136,11 @@ function LoginForm() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "登录失败");
-      router.replace(data.created ? "/onboarding" : "/");
+      /* 三个去处，按「刚刚发生了什么」分：
+       *   joined  = 带着邀请码注册，刚和对方组成一个小厨房 → 把那一刻留出来
+       *   created = 自己新建了厨房，接下来该去邀请人
+       *   都不是  = 老用户登录，直接回点菜页 */
+      router.replace(data.joined ? "/together" : data.created ? "/onboarding" : "/");
     } catch (e) {
       setError(e instanceof Error ? e.message : "登录失败，请重试");
       setBusy(false);
