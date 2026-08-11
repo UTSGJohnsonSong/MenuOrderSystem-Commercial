@@ -81,7 +81,11 @@ export default function GuestBar() {
         color: "#8E7458", fontSize: "0.75rem", lineHeight: 1.35,
         overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
       }}>
-        正在参观示例小厨房 · 随便翻，改不了
+        {/* 「改不了」是上一版的口径，参观模式改成本地可写之后就变成假话了。
+            现在的实情：能加菜、能点、能存食记，但只在这台手机上（lib/guest-local.ts）。
+            这句话必须说清「只在这台手机」，否则用户会以为换设备也在，
+            那是比「不能用」更糟的失望。 */}
+        随便加菜、点菜 · 只存在这台手机上
       </span>
       <Link href="/welcome" style={{
         flexShrink: 0,

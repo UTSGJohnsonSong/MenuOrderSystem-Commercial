@@ -3,6 +3,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { Category, MenuItem, CartItem, MealLog } from "./types";
 import { GUEST_WRITE_MESSAGE, GUEST_WRITE_STATUS } from "./guest-shared";
+import {
+  isGuestNow, applyItems, applyLogs,
+  guestAddItem, guestUpdateItem, guestDeleteItem,
+  guestSaveLog, guestDeleteLog,
+} from "./guest-local";
 
 /* A refused delete has to say WHY. These paths use raw fetch rather than
  * apiFetch (no redirect on 401/403), so without this the row silently bounces
@@ -29,7 +34,18 @@ async function apiFetch<T>(url: string, init?: RequestInit): Promise<T> {
   return data as T;
 }
 
-/* ─── useStore ─── */
+/* ─── useStore ───
+ *
+ * 参观模式下所有写操作都不发请求，直接落在 localStorage（lib/guest-local.ts）。
+ * 读的时候把访客自己的增改删叠在服务器返回的示例菜上。
+ *
+ * ⚠️ 服务端那道闸没有撤：requireCurrentSpace() 仍然会拒绝访客的写请求。
+ * 这里做的是根本不发那个请求，两道防线有意重叠——将来哪个页面漏了判断，
+ * 服务端仍然拦得住，只是提示没这么友好。
+ *
+ * 用 isGuestNow() 而不是 useGuestTour()：一来 lib/ 不该反向依赖 components/，
+ * 二来这个 cookie 在同一个文档里不会变（进出参观模式都是整页加载，
+ * 见 components/GuestBar 的说明），所以按调用时刻读就够了。 */
 export function useStore() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [items, setItems] = useState<MenuItem[]>([]);
@@ -40,7 +56,8 @@ export function useStore() {
       // is indistinguishable from a genuinely empty one without this line.
       apiFetch<Category[]>("/api/categories").then(setCategories)
         .catch(e => console.error("[store] categories unavailable", e));
-      apiFetch<MenuItem[]>("/api/items").then(setItems)
+      apiFetch<MenuItem[]>("/api/items")
+        .then(base => setItems(isGuestNow() ? applyItems(base) : base))
         .catch(e => console.error("[store] items unavailable", e));
     };
     fetchAll();
@@ -51,12 +68,17 @@ export function useStore() {
   }, []);
 
   const addItem = async (item: MenuItem) => {
-    const saved = await apiFetch<MenuItem>("/api/items", { method: "POST", body: JSON.stringify(item) });
+    // 抛出的 GuestStorageFull 由调用方（ItemForm 的 handleSave）显示出来
+    const saved = isGuestNow()
+      ? guestAddItem(item)
+      : await apiFetch<MenuItem>("/api/items", { method: "POST", body: JSON.stringify(item) });
     setItems(prev => [...prev, saved]);
   };
 
   const updateItem = async (item: MenuItem) => {
-    const saved = await apiFetch<MenuItem>(`/api/items/${item.id}`, { method: "PUT", body: JSON.stringify(item) });
+    const saved = isGuestNow()
+      ? guestUpdateItem(item)
+      : await apiFetch<MenuItem>(`/api/items/${item.id}`, { method: "PUT", body: JSON.stringify(item) });
     setItems(prev => prev.map(i => i.id === saved.id ? saved : i));
   };
 
@@ -70,6 +92,14 @@ export function useStore() {
    * does not resolve with !res.ok, so the offline case — the likeliest one on a
    * phone — would otherwise skip the rollback entirely. */
   const deleteItem = async (id: string) => {
+    // 参观模式没有网络这一步，也就没有回滚可言：写进 localStorage 就是成功，
+    // 写不进去（配额满）会抛，由调用方显示
+    if (isGuestNow()) {
+      guestDeleteItem(id);
+      setItems(prev => prev.filter(i => i.id !== id));
+      return;
+    }
+
     const at = items.findIndex(i => i.id === id);
     const removed = at === -1 ? undefined : items[at];
     setItems(prev => prev.filter(i => i.id !== id));
@@ -189,11 +219,21 @@ export function useCart(items: MenuItem[], categories: Category[]) {
 
 // 单次保存食记，不需要订阅整个列表（点菜页用这个，避免不必要的轮询重渲染）
 export async function saveMealLog(log: MealLog): Promise<MealLog> {
+  if (isGuestNow()) return guestSaveLog(log);
   return apiFetch<MealLog>("/api/logs", { method: "POST", body: JSON.stringify(log) });
 }
 
-// 图片上传：客户端压缩后的 jpeg dataURL → 服务器文件 → 返回可直接用的 URL
+/* 图片上传：客户端压缩后的 jpeg dataURL → 服务器文件 → 返回可直接用的 URL。
+ *
+ * 参观模式直接把 dataURL 原样返回——访客没有账号，服务器上没有他的目录可以放，
+ * 图就跟着菜一起存在 localStorage 里。代价是占配额（800px q0.75 的图约 100~200KB，
+ * 而 localStorage 大约 5MB），写不下时 guest-local 会抛 GuestStorageFull，
+ * 提示直接指向「删掉几张自己加的照片」。
+ *
+ * ⚠️ 封面照片走的不是这条路（它 PATCH /api/space，参观模式会拿到 422 和友好提示）。
+ * 那是有意的：裁剪器输出 1200 宽，一张就可能吃掉配额的一大块。 */
 export async function uploadImage(dataUrl: string): Promise<string> {
+  if (isGuestNow()) return dataUrl;
   const { url } = await apiFetch<{ url: string }>("/api/upload", {
     method: "POST",
     body: JSON.stringify({ dataUrl }),
@@ -207,7 +247,8 @@ export function useMealLog() {
 
   useEffect(() => {
     const fetchLogs = () => {
-      apiFetch<MealLog[]>("/api/logs").then(next => {
+      apiFetch<MealLog[]>("/api/logs").then(base => {
+        const next = isGuestNow() ? applyLogs(base) : base;
         // 数据没变化时不更新 state，避免每次轮询都触发重渲染
         setLogs(prev => JSON.stringify(prev) === JSON.stringify(next) ? prev : next);
       }).catch(e => console.error("[store] logs unavailable", e));
@@ -241,6 +282,13 @@ export function useMealLog() {
   // callers must catch. Re-inserted at its old index; /shiji re-sorts by date
   // anyway, but the guard against the concurrent poll needs the index case too.
   const deleteLog = async (id: string) => {
+    // 同 deleteItem：参观模式不发请求，也就没有回滚
+    if (isGuestNow()) {
+      guestDeleteLog(id);
+      setLogs(prev => prev.filter(l => l.id !== id));
+      return;
+    }
+
     const at = logs.findIndex(l => l.id === id);
     const removed = at === -1 ? undefined : logs[at];
     setLogs(prev => prev.filter(l => l.id !== id));
