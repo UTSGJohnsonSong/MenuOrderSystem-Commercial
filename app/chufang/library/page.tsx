@@ -4,8 +4,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
 import { GUEST_BAR_H, useGuestTour } from "@/components/GuestBar";
-import { LIBRARY_DISHES, LIBRARY_CATS, searchLibrary, libraryImageUrl, libraryThumbUrl, LibraryDish } from "@/lib/library";
+import { LIBRARY_DISHES, LIBRARY_CATS, searchLibrary, libraryImageUrl, libraryThumbUrl, libraryDishNotes, LibraryDish } from "@/lib/library";
 import { uid } from "@/lib/uid";
+import { GUEST_COOKIE, GUEST_COOKIE_VALUE } from "@/lib/guest-shared";
 
 export default function LibraryPage() {
   const router = useRouter();
@@ -26,6 +27,12 @@ export default function LibraryPage() {
     // else a failure is logged rather than swallowed — otherwise admin-uploaded
     // covers silently not showing up has no trail at all.
     if (guest) return;
+    // The first hydration snapshot is false even for a tour cookie.
+    try {
+      if (document.cookie.split("; ").includes(`${GUEST_COOKIE}=${GUEST_COOKIE_VALUE}`)) return;
+    } catch {
+      return;
+    }
     fetch("/api/library/images")
       .then(r => r.ok ? r.json() : Promise.reject(new Error(`library images ${r.status}`)))
       .then(d => setLibImages(d.images ?? {}))
@@ -53,8 +60,7 @@ export default function LibraryPage() {
     return catFilter === "all" ? searched : searched.filter(d => d.cat === catFilter);
   }, [query, catFilter]);
 
-  /* 同上：切分类或改搜索词之后，结果列表要回到第一条。
-   * 416 道菜的列表里，停在原位置等于让人对着一段不相干的内容发愣。 */
+  // Reset the result scroll position when the query or category changes.
   const resultsRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (resultsRef.current) resultsRef.current.scrollTop = 0;
@@ -75,7 +81,7 @@ export default function LibraryPage() {
         image_url: coverOf(dish) ?? "",
         ingredients: dish.ingredients,
         instructions: dish.instructions,
-        notes: "",
+        notes: libraryDishNotes(dish),
         is_active: true,
         sort_order: items.filter(i => i.category_id === categoryId).length + 1,
         created_at: now,
@@ -154,11 +160,11 @@ export default function LibraryPage() {
             const added = isAdded(dish);
             return (
               <div key={dish.name} style={{
-                display: "flex", alignItems: "center", gap: "12px",
                 backgroundColor: "#FFFFFF", borderRadius: "16px",
                 padding: "12px 14px", marginBottom: "8px",
                 boxShadow: "0 1px 6px rgba(58,42,26,0.06)",
               }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                 {thumbOf(dish) ? (
                   <img src={thumbOf(dish)!} alt={dish.name} loading="lazy" style={{
                     width: "52px", height: "52px", borderRadius: "12px",
@@ -171,7 +177,7 @@ export default function LibraryPage() {
                   }} />
                 )}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "4px 8px" }}>
                     <p style={{ color: "#3A2A1A", fontSize: "0.9375rem", fontWeight: 600 }}>{dish.name}</p>
                     <span style={{
                       flexShrink: 0, padding: "1px 8px", borderRadius: "999px",
@@ -184,7 +190,7 @@ export default function LibraryPage() {
                     color: "#9A7B5F", fontSize: "0.75rem", marginTop: "3px",
                     overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                   }}>
-                    {dish.ingredients}
+                    {dish.description ?? dish.ingredients}
                   </p>
                 </div>
                 <button
@@ -199,6 +205,19 @@ export default function LibraryPage() {
                 >
                   {added ? "✓ 已加入" : "＋ 加入"}
                 </button>
+                </div>
+                <details style={{ marginTop: "9px", color: "#6F513A", fontSize: "0.8125rem" }}>
+                  <summary aria-label={`查看${dish.name}的用料与做法`} style={{ cursor: "pointer", padding: "6px 0", minHeight: "32px" }}>
+                    用料与做法{dish.timeMinutes ? ` · 约 ${dish.timeMinutes} 分钟` : ""}
+                  </summary>
+                  {coverOf(dish) && <img src={coverOf(dish)!} alt={`${dish.name}插画`} loading="lazy" width={280} height={280} style={{ width: "min(100%, 280px)", height: "auto", display: "block", margin: "8px auto", borderRadius: "12px" }} />}
+                  {dish.description && <p style={{ margin: "8px 0", lineHeight: 1.7 }}>{dish.description}</p>}
+                  {dish.servings && <p style={{ margin: "8px 0", color: "#9A7B5F" }}>{dish.servings}{dish.timeMinutes ? " · 时间含准备与等待，按锅具和食材调整" : ""}</p>}
+                  <p style={{ fontWeight: 600, marginTop: "12px" }}>食材用量</p>
+                  <p style={{ lineHeight: 1.8, whiteSpace: "pre-wrap", overflowWrap: "anywhere", marginTop: "4px" }}>{dish.ingredients}</p>
+                  <p style={{ fontWeight: 600, marginTop: "12px" }}>做法</p>
+                  <p style={{ lineHeight: 1.9, whiteSpace: "pre-wrap", overflowWrap: "anywhere", margin: "4px 0 8px" }}>{dish.instructions}</p>
+                </details>
               </div>
             );
           })

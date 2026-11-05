@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { PRESET_CATEGORIES } from "./categories";
 import { DEFAULT_COVER } from "./covers";
-import { LIBRARY_DISHES, libraryImageUrl } from "./library";
+import { LIBRARY_DISHES, libraryImageUrl, libraryDishNotes } from "./library";
 import { Category, MealLog, MealLogEntry, MenuItem } from "./types";
 
 export { GUEST_COOKIE, GUEST_COOKIE_VALUE, GUEST_MAX_AGE, GUEST_WRITE_MESSAGE, GUEST_WRITE_STATUS } from "./guest-shared";
@@ -54,7 +54,7 @@ const GUEST_ITEMS: MenuItem[] = (() => {
       image_url: libraryImageUrl(d) ?? "",
       ingredients: d.ingredients,
       instructions: d.instructions,
-      notes: "",
+      notes: libraryDishNotes(d),
       is_active: true,
       sort_order: n,
       created_at: "2024-01-01T00:00:00Z",
